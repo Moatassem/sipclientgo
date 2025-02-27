@@ -1,0 +1,27 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch",
+      "type": "go",
+      "request": "launch",
+      "program": "${workspaceFolder}/client.go",
+      "env": {
+        // "server_ipv4": "192.168.1.2",
+        // "sip_udp_port": "5060",
+        // "http_port": "8080",
+        "media_dir": ".\\audio",
+        "pcscf_udp_socket": "172.20.40.51:5060",
+        "epc_domain": "epc.mnc001.mcc001.3gppnetwork.org",
+        "ims_domain": "ims.mnc001.mcc001.3gppnetwork.org",
+        "ki": "8baf473f2f8fd09487cccbd7097c6862",
+        "opc": "8E27B6AF0E692E750F32667A3B14605D",
+        "imsi": "001010123456790"
+        // server_ipv4=192.168.1.2 sip_udp_port=5060 http_port=8080 media_dir=.\\audio go run . -race
+      }
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+issues:
+  exclude-rules:
+    - path: ".*\\/main_test.go$"
+      linters:
+        - exhaustruct
+        - tparallel
+        - paralleltest
+linters:
+  disable:
+    - depguard
+    - gci
+    - varnamelen
+    - wrapcheck
+    - funlen
+    - lll
+    - dupl
+    - exportloopref
+    - ireturn
+    - godot
+  enable-all: true
