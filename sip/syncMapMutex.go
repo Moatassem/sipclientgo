@@ -1,7 +1,6 @@
 package sip
 
 import (
-	"sipclientgo/global"
 	"sync"
 )
 
@@ -14,15 +13,10 @@ func NewConcurrentMapMutex() ConcurrentMapMutex {
 	return ConcurrentMapMutex{_map: make(map[string]*SipSession)}
 }
 
-func (c *ConcurrentMapMutex) Store(ky string, ss *SipSession) (ok bool) {
+func (c *ConcurrentMapMutex) Store(ky string, ss *SipSession) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	ok = true
-	if ss.Direction == global.INBOUND {
-		ok = false
-	}
 	c._map[ky] = ss
-	return
 }
 
 func (c *ConcurrentMapMutex) Delete(ky string) {

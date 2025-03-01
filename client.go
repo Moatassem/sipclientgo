@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"net"
 	"os"
 	"sipclientgo/global"
 	"sipclientgo/sip"
 	"sipclientgo/system"
+	"sipclientgo/webserver"
 )
 
 // environment variables
@@ -30,10 +30,11 @@ const (
 func main() {
 	greeting()
 
-	conn := sip.StartServer(checkArgs())
-	defer conn.Close()
+	ipv4, httpport := checkArgs()
 
-	go sip.RegisterMe("")
+	sip.StartServer()
+
+	webserver.StartWS(ipv4, httpport)
 
 	global.WtGrp.Wait()
 }
@@ -42,62 +43,62 @@ func greeting() {
 	system.LogInfo(system.LTSystem, fmt.Sprintf("Welcome to %s - Product of %s 2025", global.B2BUAName, system.ASCIIPascal(global.EntityName)))
 }
 
-func checkArgs() (string, int, string) {
+func checkArgs() (string, int) {
 	ipv4, ok := os.LookupEnv(OwnIPv4)
 	if !ok {
 		system.LogWarning(system.LTConfiguration, "No self IPv4 address provided - First available shall be used")
 	}
 
-	global.ClientIPv4 = net.ParseIP(ipv4)
+	var httpport int
 
-	var sipuport int
+	hp, ok := os.LookupEnv(OwnHttpPort)
 
-	sup, ok := os.LookupEnv(OwnSIPUdpPort)
 	if !ok {
-		system.LogWarning(system.LTConfiguration, fmt.Sprintf("No self SIP UDP port provided - [%d] shall be used", global.DefaultSipPort))
-		sipuport = global.DefaultSipPort
+		system.LogWarning(system.LTConfiguration, fmt.Sprintf("No self HTTP port provided - [%d] shall be used", global.DefaultHttpPort))
+		httpport = global.DefaultHttpPort
 	} else {
-		minS := 5000
-		maxS := 6000
-		sipuport, ok = system.Str2IntDefaultMinMax(sup, global.DefaultSipPort, minS, maxS)
+		minH := 80
+		maxH := 9999
+		httpport, ok = system.Str2IntDefaultMinMax(hp, global.DefaultHttpPort, minH, maxH)
+
 		if !ok {
-			system.LogWarning(system.LTConfiguration, "Invalid SIP UDP port: "+sup)
+			system.LogWarning(system.LTConfiguration, "Invalid HTTP port: "+hp)
 		}
 	}
 
-	pcscfSocket, ok := os.LookupEnv(PcscfUdpSocket)
-	if !ok {
-		system.LogError(system.LTConfiguration, "No P-CSCF Provided - Exiting")
-		os.Exit(2)
-	}
+	// pcscfSocket, ok := os.LookupEnv(PcscfUdpSocket)
+	// if !ok {
+	// 	system.LogError(system.LTConfiguration, "No P-CSCF Provided - Exiting")
+	// 	os.Exit(2)
+	// }
 
-	imsDomain, ok := os.LookupEnv(ImsDomain)
-	if !ok {
-		system.LogError(system.LTConfiguration, "No IMS Domain Provided - Exiting")
-		os.Exit(2)
-	}
-	global.ImsDomain = imsDomain
+	// imsDomain, ok := os.LookupEnv(ImsDomain)
+	// if !ok {
+	// 	system.LogError(system.LTConfiguration, "No IMS Domain Provided - Exiting")
+	// 	os.Exit(2)
+	// }
+	// global.ImsDomain = imsDomain
 
-	ki, ok := os.LookupEnv(Ki)
-	if !ok {
-		system.LogError(system.LTConfiguration, "No Ki Provided - Exiting")
-		os.Exit(2)
-	}
-	global.Ki = ki
+	// ki, ok := os.LookupEnv(Ki)
+	// if !ok {
+	// 	system.LogError(system.LTConfiguration, "No Ki Provided - Exiting")
+	// 	os.Exit(2)
+	// }
+	// global.Ki = ki
 
-	opc, ok := os.LookupEnv(Opc)
-	if !ok {
-		system.LogError(system.LTConfiguration, "No OPC Provided - Exiting")
-		os.Exit(2)
-	}
-	global.Opc = opc
+	// opc, ok := os.LookupEnv(Opc)
+	// if !ok {
+	// 	system.LogError(system.LTConfiguration, "No OPC Provided - Exiting")
+	// 	os.Exit(2)
+	// }
+	// global.Opc = opc
 
-	imsi, ok := os.LookupEnv(Imsi)
-	if !ok {
-		system.LogError(system.LTConfiguration, "No IMSI Provided - Exiting")
-		os.Exit(2)
-	}
-	global.Imsi = imsi
+	// imsi, ok := os.LookupEnv(Imsi)
+	// if !ok {
+	// 	system.LogError(system.LTConfiguration, "No IMSI Provided - Exiting")
+	// 	os.Exit(2)
+	// }
+	// global.Imsi = imsi
 
 	mp, ok := os.LookupEnv(MediaDirectory)
 	if ok {
@@ -107,5 +108,5 @@ func checkArgs() (string, int, string) {
 		system.LogWarning(system.LTConfiguration, fmt.Sprintf("No media directory provided - [%s] shall be used", global.MediaPath))
 	}
 
-	return ipv4, sipuport, pcscfSocket
+	return ipv4, httpport
 }

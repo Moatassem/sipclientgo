@@ -14,7 +14,7 @@ const (
 
 	BufferSize int = 4096
 
-	DefaultSipPort int = 5080
+	DefaultHttpPort int = 8080
 
 	RTPHeaderSize  int = 12
 	RTPPayloadSize int = 160
@@ -42,14 +42,14 @@ const (
 )
 
 var (
-	ClientIPv4 net.IP
-	SipUdpPort int
+	ClientIPv4  net.IP
+	HttpTcpPort int
 
 	PCSCFSocket *net.UDPAddr
 	ImsDomain   string
-	Ki          string
-	Opc         string
-	Imsi        string
+	// Ki          string
+	// Opc         string
+	// Imsi        string
 
 	IsSystemBigEndian bool
 

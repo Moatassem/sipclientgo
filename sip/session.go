@@ -47,6 +47,7 @@ type SipSession struct {
 	RecordRouteUDP   *net.UDPAddr
 	SIPUDPListenser  *net.UDPConn
 	RemoteUserAgent  *SipUdpUserAgent
+	UserEquipment    *UserEquipment
 
 	RemoteMedia    *net.UDPAddr
 	MediaListener  *net.UDPConn
@@ -405,6 +406,7 @@ func (session *SipSession) BuildSARequestHeaders(st *Transaction, rqstpk Request
 		sl.UriParameters = &map[string]string{"user": "phone"}
 	}
 	sl.BuildRURI()
+	session.RemoteContactURI = sl.RUri
 
 	// Set headers
 
@@ -442,7 +444,14 @@ func (session *SipSession) BuildSARequestHeaders(st *Transaction, rqstpk Request
 	hdrs.AddHeader(CSeq, fmt.Sprintf("%d %s", session.FwdCSeq, rqstpk.Method.String()))
 
 	// Set Max-Forwards
-	hdrs.SetHeader(Max_Forwards, "70")
+	maxFwds := 70
+	sipmsg.MaxFwds = maxFwds
+	hdrs.SetHeader(Max_Forwards, system.Int2Str(maxFwds))
+
+	// Set Contact
+	if !hdrs.HeaderExists("Contact") {
+		hdrs.SetHeader(Contact, system.GenerateContact(localsocket))
+	}
 
 	// Set Date
 	hdrs.AddHeader(Date, time.Now().UTC().Format(DicTFs[Signaling]))
@@ -751,7 +760,7 @@ func (session *SipSession) PrepareRequestHeaders(trans *Transaction, rqstpk Requ
 			}
 		}
 	}
-	hdrs.SetHeader(Max_Forwards, fmt.Sprintf("%d", maxFwds))
+	hdrs.SetHeader(Max_Forwards, system.Int2Str(maxFwds))
 
 	if rqstpk.Method == ReINVITE {
 		sipmsg.MaxFwds = maxFwds

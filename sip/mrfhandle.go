@@ -558,40 +558,89 @@ func ProbeUA(conn *net.UDPConn, ua *SipUdpUserAgent) {
 	ss.SendSTMessage(trans)
 }
 
-func RegisterMe(wwwauth string) {
+func StartUEListener(ue *UserEquipment) error {
+	ul, err := system.StartListening(ClientIPv4, ue.UdpPort)
+	if err != nil {
+		return err
+	}
+	startWorkers(ul)
+	udpLoopWorkers(ul)
+	ue.UDPListener = ul
+	// fmt.Println("Success: UDP", UDPListener.LocalAddr().String())
+	// go RegisterMe(ue, "")
+	return nil
+}
+
+func RegisterMe(ue *UserEquipment, wwwauth string) {
+	if PCSCFSocket == nil {
+		system.LogError(system.LTConfiguration, "Missing PCSCF Socket")
+		return
+	}
+
 	WtGrp.Add(1)
 	defer WtGrp.Done()
 
 	ss := NewSS(OUTBOUND)
 	ss.RemoteUDP = PCSCFSocket
-	ss.SIPUDPListenser = UDPListener
+	ss.SIPUDPListenser = ue.UDPListener
+	ss.UserEquipment = ue
 
 	hdrs := NewSipHeaders()
 	hdrs.AddHeader(P_Access_Network_Info, "IEEE-802.3") //"3GPP-E-UTRAN-FDD; utran-cell-id-3gpp=001010001000019B")
 	hdrs.AddHeader(Expires, "600000")
 	hdrs.AddHeader(Supported, "path")
-	hdrs.AddHeader(Contact, fmt.Sprintf(`<sip:%s>;+g.3gpp.icsi-ref="urn:Aurn-7:3gpp-service.ims.icsi.mmtel";+g.3gpp.smsip;video;+sip.instance="<urn:gsma:imei:86728703-952237-0>";+g.3gpp.accesstype="wired"`, system.GetUDPAddrStringFromConn(UDPListener)))
+	hdrs.AddHeader(Contact, fmt.Sprintf(`<sip:%s>;+g.3gpp.icsi-ref="urn:Aurn-7:3gpp-service.ims.icsi.mmtel";+g.3gpp.smsip;video;+sip.instance="<urn:gsma:imei:86728703-952237-0>";+g.3gpp.accesstype="wired"`, system.GetUDPAddrStringFromConn(ue.UDPListener)))
 
 	if wwwauth != "" {
-		auths := ParseWWWAuthenticate(wwwauth)
-		author := computeAuthorizationHeader(ImsDomain, auths[0].Params["nonce"], REGISTER.String(), "00000001")
+		auths := ParseWWWAuthenticateOptimized(wwwauth)
+		author := computeAuthorizationHeader(ImsDomain, auths[0].Params["nonce"], REGISTER.String(), "00000001", ue)
 		hdrs.AddHeader(Authorization, author)
+		ue.Authorization = author
 	}
 
-	trans := ss.CreateSARequest(RequestPack{Method: REGISTER, Max70: true, RUriUP: Imsi, FromUP: Imsi, CustomHeaders: hdrs}, EmptyBody())
+	trans := ss.CreateSARequest(RequestPack{Method: REGISTER, Max70: true, RUriUP: ue.Imsi, FromUP: ue.Imsi, CustomHeaders: hdrs}, EmptyBody())
 
 	ss.SetState(state.BeingRegistered)
 	ss.AddMe()
 	ss.SendSTMessage(trans)
 }
 
-func computeAuthorizationHeader(realm, nonce, method, nonceCount string) string {
+func CallViaUE(ue *UserEquipment, cdpn string) {
+	if PCSCFSocket == nil {
+		system.LogError(system.LTConfiguration, "Missing PCSCF Socket")
+		return
+	}
+
+	WtGrp.Add(1)
+	defer WtGrp.Done()
+
+	ss := NewSS(OUTBOUND)
+	ss.RemoteUDP = PCSCFSocket
+	ss.SIPUDPListenser = ue.UDPListener
+	ss.UserEquipment = ue
+
+	hdrs := NewSipHeaders()
+	hdrs.AddHeader(P_Access_Network_Info, "IEEE-802.3") //"3GPP-E-UTRAN-FDD; utran-cell-id-3gpp=001010001000019B")
+	// hdrs.AddHeader(Expires, "600000")
+	hdrs.AddHeader(Supported, "path")
+	hdrs.AddHeader(Contact, fmt.Sprintf(`<sip:%s>;+g.3gpp.icsi-ref="urn:Aurn-7:3gpp-service.ims.icsi.mmtel";+g.3gpp.smsip;video;+sip.instance="<urn:gsma:imei:86728703-952237-0>";+g.3gpp.accesstype="wired"`, system.GetUDPAddrStringFromConn(ue.UDPListener)))
+
+	hdrs.AddHeader(Authorization, ue.Authorization)
+
+	trans := ss.CreateSARequest(RequestPack{Method: INVITE, Max70: true, RUriUP: cdpn, FromUP: ue.MsIsdn, CustomHeaders: hdrs}, EmptyBody())
+
+	ss.SetState(state.BeingEstablished)
+	ss.AddMe()
+	ss.SendSTMessage(trans)
+}
+
+func computeAuthorizationHeader(realm, nonce, method, nonceCount string, ue *UserEquipment) string {
 	uri := "sip:" + realm
 	cnonce := guid.GenerateCNonce()
-	ha1 := guid.Md5Hash(fmt.Sprintf("%s:%s:%s", Imsi, realm, Ki))
+	ha1 := guid.Md5Hash(fmt.Sprintf("%s:%s:%s", ue.Imsi, realm, ue.Ki))
 	ha2 := guid.Md5Hash(fmt.Sprintf("%s:%s", method, uri))
 	response := guid.Md5Hash(fmt.Sprintf("%s:%s:%s:%s:auth:%s", ha1, nonce, nonceCount, cnonce, ha2))
-	return fmt.Sprintf(`Digest username="%s", realm="%s", nonce="%s", uri="%s", response="%s", algorithm=MD5, qop=auth, nc=%s, cnonce="%s"`, Imsi, realm, nonce, uri, response, nonceCount, cnonce)
+	return fmt.Sprintf(`Digest username="%s", realm="%s", nonce="%s", uri="%s", response="%s", algorithm=MD5, qop=auth, nc=%s, cnonce="%s"`, ue.Imsi, realm, nonce, uri, response, nonceCount, cnonce)
 }
 
 type AuthScheme struct {
@@ -663,4 +712,84 @@ func ParseWWWAuthenticate(header string) []AuthScheme {
 	}
 
 	return schemes
+}
+
+func ParseWWWAuthenticateOptimized(header string) []AuthScheme {
+	var schemes []AuthScheme
+	schemeRegex := regexp.MustCompile(`(?i)^(Basic|Bearer|Digest|NTLM|OAuth|Negotiate)\b`)
+	paramRegex := regexp.MustCompile(`([a-zA-Z0-9_-]+)\s*=\s*("[^"]+"|[^,]+)`)
+
+	parts := splitHeader(header)
+
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+
+		if match := schemeRegex.FindString(part); match != "" {
+			schemes = append(schemes, AuthScheme{
+				Scheme: match,
+				Params: extractParams(strings.TrimSpace(strings.TrimPrefix(part, match)), paramRegex),
+			})
+		} else if len(schemes) > 0 {
+			currentScheme := &schemes[len(schemes)-1]
+			for key, value := range extractParams(part, paramRegex) {
+				currentScheme.Params[key] = value
+			}
+		}
+	}
+
+	return schemes
+}
+
+func splitHeader(header string) []string {
+	var parts []string
+	inQuotes := false
+	var partBuilder strings.Builder
+
+	for _, char := range header {
+		switch char {
+		case '"':
+			inQuotes = !inQuotes
+		case ',':
+			if !inQuotes {
+				parts = append(parts, partBuilder.String())
+				partBuilder.Reset()
+				continue
+			}
+		}
+		partBuilder.WriteRune(char)
+	}
+	if partBuilder.Len() > 0 {
+		parts = append(parts, partBuilder.String())
+	}
+
+	return parts
+}
+
+func extractParams(part string, paramRegex *regexp.Regexp) map[string]string {
+	params := make(map[string]string)
+	for _, pm := range paramRegex.FindAllStringSubmatch(part, -1) {
+		key := strings.TrimSpace(pm[1])
+		value := pm[2]
+		params[key] = strings.Trim(value, `"`)
+	}
+	return params
+}
+
+func logRegData(sipmsg *SipMessage, ue *UserEquipment) {
+	pau := sipmsg.Headers.Value("P-Associated-URI")
+	rgx := regexp.MustCompile("tel:([0-9]+)")
+	msisdn := rgx.FindStringSubmatch(pau)[1]
+
+	cntct := sipmsg.Headers.Value("Contact")
+
+	rgx = regexp.MustCompile(";expires=([0-9]+)")
+	expires := rgx.FindStringSubmatch(cntct)[1]
+
+	ue.Expires = expires
+	ue.MsIsdn = msisdn
+	ue.RegStatus = "Registered"
+
+	// fmt.Printf("Registration Successful for %s@%s\n", ue.Imsi, ImsDomain)
+	// fmt.Printf("Received MSISDN: %s\n", msisdn)
+	// fmt.Printf("Regigration Expires in: %s\n", expires)
 }

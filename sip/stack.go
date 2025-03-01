@@ -190,7 +190,7 @@ func processPDU(payload []byte) (*SipMessage, []byte, error) {
 		cntntLength = system.Str2Uint[uint16](values[0])
 	} else {
 		if ok, _ := msgmap.ValuesHeader(Content_Type); ok {
-			msgmap.AddHeader(Content_Length, fmt.Sprintf("%d", cntntLength))
+			msgmap.AddHeader(Content_Length, system.Uint16ToStr(cntntLength))
 		} else {
 			msgmap.AddHeader(Content_Length, "0")
 		}
@@ -304,7 +304,7 @@ func sessionGetter(sipmsg *SipMessage) (*SipSession, NewSessionType) {
 			return nil, Response
 		}
 		sipses := NewSIPSession(sipmsg)
-		clok := Sessions.Store(callID, sipses)
+		Sessions.Store(callID, sipses)
 		if sipmsg.ToTag == "" {
 			switch sipmsg.GetMethod() {
 			case INVITE:
@@ -323,9 +323,6 @@ func sessionGetter(sipmsg *SipMessage) (*SipSession, NewSessionType) {
 				}
 				if sipmsg.MaxFwds <= MinMaxFwds {
 					return sipses, TooLowMaxForwards
-				}
-				if !clok {
-					return sipses, ExceededCallRate
 				}
 				return sipses, ValidRequest
 			case MESSAGE:
@@ -528,6 +525,8 @@ func sipStack(sipmsg *SipMessage, ss *SipSession, newSesType NewSessionType) {
 			switch trans.Method {
 			case REGISTER:
 				ss.FinalizeState()
+				logRegData(sipmsg, ss.UserEquipment)
+				ss.DropMe()
 			case INFO:
 			case OPTIONS: //probing or keepalive
 				if ss.Mode == mode.KeepAlive {
@@ -543,11 +542,15 @@ func sipStack(sipmsg *SipMessage, ss *SipSession, newSesType NewSessionType) {
 		case stsCode <= 399:
 		default: // 400-699
 			switch trans.Method {
+			case INVITE:
+				ss.SetState(state.Failed)
+				ss.SendRequest(ACK, trans, EmptyBody())
+				ss.DropMeTimed()
 			case REGISTER:
 				ss.SetState(state.Failed)
 				ss.DropMe()
 				if wwwauth := sipmsg.Headers.ValueHeader(WWW_Authenticate); wwwauth != "" {
-					go RegisterMe(wwwauth)
+					go RegisterMe(ss.UserEquipment, wwwauth)
 				}
 			case OPTIONS: //probing or keepalive
 				if ss.Mode == mode.KeepAlive {
@@ -555,6 +558,7 @@ func sipStack(sipmsg *SipMessage, ss *SipSession, newSesType NewSessionType) {
 					ss.DropMe()
 				}
 			}
+
 		}
 	}
 }

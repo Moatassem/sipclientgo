@@ -6,7 +6,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
 	"math/rand/v2"
+	"os"
 
 	"net"
 	"strings"
@@ -41,6 +43,49 @@ outer:
 	return IPs, nil
 }
 
+func GetLocalIPv4(getfirst bool) net.IP {
+	fmt.Print("Checking Interfaces...")
+	serverIPs, err := GetLocalIPs()
+	if err != nil {
+		fmt.Println("Failed to find an IPv4 interface:", err)
+		os.Exit(1)
+	}
+	var serverIP net.IP
+	if len(serverIPs) == 1 {
+		serverIP = serverIPs[0]
+		// fmt.Println("Found:", serverIP)
+	} else {
+		var idx int
+		for {
+			// fmt.Printf("Found (%d) interfaces:\n", len(serverIPs))
+			for i, s := range serverIPs {
+				fmt.Printf("%d- %s\n", i+1, s.String())
+			}
+			if getfirst {
+				idx = 1
+				break
+			} else {
+				fmt.Print("Your choice:? ")
+				n, err := fmt.Scanln(&idx)
+				if n == 0 {
+					log.Panic("no proper interface selected")
+				}
+				if idx <= 0 || idx > len(serverIPs) {
+					fmt.Println("Invalid interface selected")
+					continue
+				}
+				if err == nil {
+					break
+				}
+				fmt.Println(err)
+			}
+		}
+		serverIP = serverIPs[idx-1]
+		fmt.Println("Selected:", serverIP)
+	}
+	return serverIP
+}
+
 func StartListening(ip net.IP, prt int) (*net.UDPConn, error) {
 	if ip == nil {
 		return nil, errors.New("nil IP address")
@@ -49,6 +94,21 @@ func StartListening(ip net.IP, prt int) (*net.UDPConn, error) {
 	socket.IP = ip
 	socket.Port = prt
 	return net.ListenUDP("udp", &socket)
+}
+
+func TestListening(ip net.IP, prt int) error {
+	if ip == nil {
+		return errors.New("nil IP address")
+	}
+	var socket net.UDPAddr
+	socket.IP = ip
+	socket.Port = prt
+	conn, err := net.ListenUDP("udp", &socket)
+	if err != nil {
+		return err
+	}
+	conn.Close()
+	return nil
 }
 
 func GetUDPAddrFromConn(conn *net.UDPConn) *net.UDPAddr {
@@ -350,6 +410,73 @@ func Str2Uint[T uint | uint8 | uint16 | uint32 | uint64](s string) T {
 		out = out*10 + T(s[i]-'0')
 	}
 	return out
+}
+
+func Int2Str(val int) string {
+	if val == 0 {
+		return "0"
+	}
+	buf := make([]byte, 10)
+	return int2str(buf, val)
+}
+
+func int2str[T int | int8 | int16 | int32 | int64](buf []byte, val T) string {
+	isNeg := val < 0
+	if isNeg {
+		val *= -1
+	}
+	i := len(buf)
+	for val >= 10 {
+		i--
+		buf[i] = '0' + byte(val%10)
+		val /= 10
+	}
+	i--
+	buf[i] = '0' + byte(val)
+
+	if isNeg {
+		return "-" + string(buf[i:])
+	}
+	return string(buf[i:])
+}
+
+func Uint16ToStr(val uint16) string {
+	if val == 0 {
+		return "0"
+	}
+	buf := make([]byte, 5)
+	return uint2str(buf, val)
+}
+
+// Uint32ToStr converts a uint32 to its string representation.
+func Uint32ToStr(val uint32) string {
+	if val == 0 {
+		return "0"
+	}
+	buf := make([]byte, 10)
+	return uint2str(buf, val)
+}
+
+// Uint64ToStr converts a uint64 to its string representation.
+func Uint64ToStr(val uint64) string {
+	if val == 0 {
+		return "0"
+	}
+	buf := make([]byte, 20)
+	return uint2str(buf, val)
+}
+
+func uint2str[T uint16 | uint32 | uint64](buf []byte, val T) string {
+	i := len(buf)
+	for val >= 10 {
+		i--
+		buf[i] = '0' + byte(val%10)
+		val /= 10
+	}
+	i--
+	buf[i] = '0' + byte(val)
+
+	return string(buf[i:])
 }
 
 //====================================================
