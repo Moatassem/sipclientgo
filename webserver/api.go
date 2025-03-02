@@ -15,6 +15,7 @@ import (
 	"sipclientgo/system"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -35,8 +36,6 @@ tryAgain:
 		goto tryAgain
 	}
 
-	loadDataLocally()
-
 	r := http.NewServeMux()
 	ws := fmt.Sprintf("%s:%d", global.ClientIPv4.String(), global.HttpTcpPort)
 	srv := &http.Server{Addr: ws, Handler: r, ReadTimeout: 5 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 15 * time.Second}
@@ -46,13 +45,17 @@ tryAgain:
 	r.HandleFunc("/", webHandler)
 
 	global.WtGrp.Add(1)
+	atomic.AddInt32(&global.WtGrpC, 1)
 	go func() {
 		defer global.WtGrp.Done()
+		defer atomic.AddInt32(&global.WtGrpC, -1)
 		log.Fatal(srv.ListenAndServe())
 	}()
 
 	fmt.Print("Loading API Webserver...")
 	fmt.Println("Success: HTTP", ws)
+
+	loadDataLocally()
 }
 
 func webHandler(w http.ResponseWriter, r *http.Request) {
@@ -79,10 +82,15 @@ func webHandler(w http.ResponseWriter, r *http.Request) {
 			handlePortalData(w, r)
 			return
 		}
+	case http.MethodDelete:
+		if r.URL.Path == "/portal" {
+			servePortalDelete(w, r)
+			return
+		}
 	case http.MethodPut:
 		if r.URL.Path == "/register" {
 			imsi := r.URL.Query().Get("imsi")
-			if err := sip.UEs.RegisterUE(imsi); err != nil {
+			if err := sip.UEs.DoRegister(imsi); err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
@@ -92,7 +100,7 @@ func webHandler(w http.ResponseWriter, r *http.Request) {
 			urvalues := r.URL.Query()
 			imsi := urvalues.Get("imsi")
 			cdpn := urvalues.Get("cdpn")
-			if err := sip.UEs.CallViaUE(imsi, cdpn); err != nil {
+			if err := sip.UEs.DoCall(imsi, cdpn); err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
@@ -142,12 +150,10 @@ func handlePortalData(w http.ResponseWriter, r *http.Request) {
 
 func servePortalData(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json")
-
 	if err := json.NewEncoder(w).Encode(buildDataJson()); err != nil {
 		http.Error(w, "Error encoding response", http.StatusInternalServerError)
 		return
 	}
-
 }
 
 func servePortalPost(w http.ResponseWriter, r *http.Request) {
@@ -175,6 +181,30 @@ func servePortalPost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error encoding response", http.StatusInternalServerError)
 		return
 	}
+}
+
+func servePortalDelete(w http.ResponseWriter, r *http.Request) {
+	var imsilst []string
+	err := json.NewDecoder(r.Body).Decode(&imsilst)
+	r.Body.Close()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	sip.UEs.DeleteUEs(imsilst...)
+
+	saveDataLocally()
+
+	// w.Header().Set("Content-Type", "application/json")
+
+	// response := sip.UEs.GetUEs()
+
+	// if err := json.NewEncoder(w).Encode(response); err != nil {
+	// 	http.Error(w, "Error encoding response", http.StatusInternalServerError)
+	// 	return
+	// }
+	w.WriteHeader(http.StatusOK)
 }
 
 func serveSession(w http.ResponseWriter, r *http.Request) {
@@ -212,13 +242,13 @@ func serveStats(w http.ResponseWriter, r *http.Request) {
 		Alloc           uint64
 		System          uint64
 		GCCycles        uint32
-		WaitGroupLength int
+		WaitGroupLength int32
 	}{CPUCount: runtime.NumCPU(),
 		GoRoutinesCount: runtime.NumGoroutine(),
 		Alloc:           BToMB(m.Alloc),
 		System:          BToMB(m.Sys),
 		GCCycles:        m.NumGC,
-		WaitGroupLength: sip.WorkerCount + 3,
+		WaitGroupLength: atomic.LoadInt32(&global.WtGrpC),
 	}
 
 	response, _ := json.Marshal(data)

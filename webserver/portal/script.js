@@ -147,6 +147,12 @@ function populateTable(data) {
 
         const actionCell = newRow.insertCell();
 
+        const editButton = document.createElement('button');
+        editButton.classList.add('actions');
+        editButton.textContent = "✏️";
+        editButton.title = 'Edit';
+        editButton.addEventListener('click', () => editRecord(newRow));
+
         const regButton = document.createElement('button');
         regButton.classList.add('actions');
         regButton.textContent = '⚡';
@@ -165,6 +171,7 @@ function populateTable(data) {
         deleteButton.title = 'Delete';
         deleteButton.addEventListener('click', () => performDelete(newRow));
 
+        actionCell.appendChild(editButton);
         actionCell.appendChild(regButton);
         actionCell.appendChild(callButton);
         actionCell.appendChild(deleteButton);
@@ -173,12 +180,19 @@ function populateTable(data) {
 
 deleteSelected.addEventListener('click', event => {
     event.preventDefault();
-
     const checkboxes = dataTable.querySelectorAll('input[type="checkbox"]:checked');
-    checkboxes.forEach((checkbox) => {
-        const row = checkbox.closest('tr');
-        row.remove();
-    });
+
+    if (checkboxes.length === 0) return;
+
+    if (!confirm('Are you sure you want to remove all selected records?')) return;
+
+    const imsilst = Array.from(checkboxes).map(chkbx => chkbx.closest('tr').cells[2].textContent);
+    performDelete(imsilst);
+
+    // checkboxes.forEach((checkbox) => {
+    //     const row = checkbox.closest('tr');
+    //     row.remove();
+    // });
 });
 
 refresh.addEventListener('click', event => {
@@ -201,8 +215,23 @@ function editRecord(row) {
     // row.remove();
 }
 
-function deleteRecord(row) {
-    row.remove();
+async function deleteRecords(imsilst) {
+    const response = await fetch('/portal', {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(imsilst)
+    });
+
+    if (!response.ok) alert('Failed to delete UEs');
+}
+
+function performDelete(row) {
+    if (!confirm('Are you sure you want to remove this record?')) return;
+    const imsilst = [row.cells[2].textContent];
+    deleteRecords(imsilst);
+    loadData();
 }
 
 

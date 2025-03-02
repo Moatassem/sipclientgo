@@ -36,7 +36,7 @@ type Transaction struct {
 
 	CallID      string
 	Responses   []int
-	Lock        *sync.RWMutex
+	Lock        sync.RWMutex
 	SentMessage *SipMessage
 
 	TransTime      time.Time
@@ -52,7 +52,6 @@ func NewST() *Transaction {
 	trans := &Transaction{
 		Key:       guid.GetKey(),
 		TransTime: time.Now(),
-		Lock:      &sync.RWMutex{},
 	}
 	return trans
 }
@@ -146,7 +145,6 @@ func (trans *Transaction) CreateCANCELST() *Transaction {
 		To:                trans.To,
 		From:              trans.From,
 		ViaBranch:         trans.ViaBranch,
-		Lock:              &sync.RWMutex{},
 	}
 	// Link the INVITE transaction to the new CANCEL transaction
 	trans.LinkedTransaction = st
@@ -160,7 +158,6 @@ func (transaction *Transaction) CreateACKST() *Transaction {
 		Direction:         global.OUTBOUND,
 		CSeq:              transaction.CSeq,
 		LinkedTransaction: transaction,
-		Lock:              &sync.RWMutex{},
 	}
 
 	// Set the ViaBranch for the ACK transaction

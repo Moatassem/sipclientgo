@@ -60,7 +60,8 @@ var (
 	RTPRXBufferPool *sync.Pool
 	RTPTXBufferPool *sync.Pool
 
-	WtGrp sync.WaitGroup
+	WtGrp  sync.WaitGroup
+	WtGrpC int32
 )
 
 var (

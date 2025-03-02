@@ -14,7 +14,7 @@ linters:
     - funlen
     - lll
     - dupl
-    - exportloopref
     - ireturn
     - godot
+    - tenv
   enable-all: true

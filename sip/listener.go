@@ -5,6 +5,7 @@ import (
 	"net"
 	"sipclientgo/global"
 	"sipclientgo/system"
+	"sync/atomic"
 )
 
 // =================================================================================================
@@ -13,7 +14,6 @@ import (
 var (
 	WorkerCount = 3
 	QueueSize   = 500
-	packetQueue = make(chan Packet, QueueSize)
 )
 
 type Packet struct {
@@ -22,20 +22,23 @@ type Packet struct {
 	bytesCount int
 }
 
-func startWorkers(conn *net.UDPConn) {
+func startWorkers(conn *net.UDPConn, queue <-chan Packet) {
 	global.WtGrp.Add(WorkerCount)
+	atomic.AddInt32(&global.WtGrpC, int32(WorkerCount))
 	for range WorkerCount {
-		go worker(conn, packetQueue)
+		go worker(conn, queue)
 	}
 }
 
-func udpLoopWorkers(conn *net.UDPConn) {
+func udpLoopWorkers(conn *net.UDPConn, queue chan<- Packet) {
 	global.WtGrp.Add(1)
+	atomic.AddInt32(&global.WtGrpC, 1)
 	defer func() {
 		global.WtGrp.Done()
+		atomic.AddInt32(&global.WtGrpC, -1)
 		if r := recover(); r != nil {
 			system.LogCallStack(r)
-			udpLoopWorkers(conn)
+			udpLoopWorkers(conn, queue)
 		}
 	}()
 	go func() {
@@ -43,16 +46,16 @@ func udpLoopWorkers(conn *net.UDPConn) {
 			buf := global.BufferPool.Get().(*[]byte)
 			n, addr, err := conn.ReadFromUDP(*buf)
 			if err != nil {
-				fmt.Println(err)
-				continue
+				break
 			}
-			packetQueue <- Packet{sourceAddr: addr, buffer: buf, bytesCount: n}
+			queue <- Packet{sourceAddr: addr, buffer: buf, bytesCount: n}
 		}
 	}()
 }
 
 func worker(conn *net.UDPConn, queue <-chan Packet) {
 	defer global.WtGrp.Done()
+	defer atomic.AddInt32(&global.WtGrpC, -1)
 	for packet := range queue {
 		processPacket(packet, conn)
 	}

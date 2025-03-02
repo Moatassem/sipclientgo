@@ -11,7 +11,7 @@ const (
 )
 
 var (
-	logtitles = [...]string{"All", "AnswerMachine", "BadSIPMessage", "ChatMessage", "ConfigFiles", "Configuration", "Connectivity", "ContactCenter", "CustomCommand", "CustomCommandResult", "DTMF", "EmailNotification", "ExternalData", "FileUpload", "Webserver", "IPCollection", "License", "LogInOut", "MediaCapability", "MediaStack", "NAT", "PESQScore", "ResourceLimitation", "RTDGrabber", "Security", "SDPStack", "SIPStack", "SNMP", "StirShaken", "StressTester", "System", "TLSStack", "TTS", "UnhandledCritical", "Unspecified", "WebSocketData", "None"}
+	logtitles = [...]string{"All", "AnswerMachine", "BadSIPMessage", "ChatMessage", "ConfigFiles", "Configuration", "Connectivity", "ContactCenter", "CustomCommand", "CustomCommandResult", "DTMF", "EmailNotification", "ExternalData", "FileUpload", "Webserver", "IPCollection", "License", "LogInOut", "MediaCapability", "MediaStack", "NAT", "PESQScore", "Registration", "ResourceLimitation", "RTDGrabber", "Security", "SDPStack", "SIPStack", "SNMP", "StirShaken", "StressTester", "System", "TLSStack", "TTS", "UnhandledCritical", "Unspecified", "WebSocketData", "None"}
 	loglevels = [...]string{"Information", "Warning", "Error"}
 )
 
@@ -54,6 +54,7 @@ const (
 	LTMediaStack
 	LTNAT
 	LTPESQScore
+	LTRegistration
 	LTResourceLimitation
 	LTRTDGrabber
 	LTSecurity

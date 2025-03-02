@@ -563,10 +563,10 @@ func StartUEListener(ue *UserEquipment) error {
 	if err != nil {
 		return err
 	}
-	startWorkers(ul)
-	udpLoopWorkers(ul)
+	ue.DataChan = make(chan Packet, QueueSize)
+	startWorkers(ul, ue.DataChan)
+	udpLoopWorkers(ul, ue.DataChan)
 	ue.UDPListener = ul
-	// fmt.Println("Success: UDP", UDPListener.LocalAddr().String())
 	// go RegisterMe(ue, "")
 	return nil
 }
@@ -576,9 +576,6 @@ func RegisterMe(ue *UserEquipment, wwwauth string) {
 		system.LogError(system.LTConfiguration, "Missing PCSCF Socket")
 		return
 	}
-
-	WtGrp.Add(1)
-	defer WtGrp.Done()
 
 	ss := NewSS(OUTBOUND)
 	ss.RemoteUDP = PCSCFSocket
@@ -610,9 +607,6 @@ func CallViaUE(ue *UserEquipment, cdpn string) {
 		system.LogError(system.LTConfiguration, "Missing PCSCF Socket")
 		return
 	}
-
-	WtGrp.Add(1)
-	defer WtGrp.Done()
 
 	ss := NewSS(OUTBOUND)
 	ss.RemoteUDP = PCSCFSocket

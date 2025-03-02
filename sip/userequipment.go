@@ -3,6 +3,8 @@ package sip
 import (
 	"fmt"
 	"net"
+	"sipclientgo/global"
+	"sipclientgo/system"
 	"sync"
 )
 
@@ -17,8 +19,9 @@ type UserEquipment struct {
 	RegStatus     string       `json:"regStatus"`
 	Expires       string       `json:"expires"`
 	UdpPort       int          `json:"udpPort"`
-	UDPListener   *net.UDPConn `json:"-"`
 	Authorization string       `json:"-"`
+	UDPListener   *net.UDPConn `json:"-"`
+	DataChan      chan Packet  `json:"-"`
 }
 
 type UserEquipments struct {
@@ -48,6 +51,7 @@ func (ues *UserEquipments) AddUE(ue *UserEquipment) error {
 		return err
 	}
 	ues.eqs[ue.Imsi] = ue
+	system.LogInfo(system.LTRegistration, fmt.Sprintf("New UE startedon [%s:%d]", global.ClientIPv4.String(), ue.UdpPort))
 	return nil
 }
 
@@ -64,7 +68,15 @@ func (ues *UserEquipments) DeleteUEs(imsis ...string) {
 	ues.mu.Lock()
 	defer ues.mu.Unlock()
 	for _, imsi := range imsis {
-		delete(ues.eqs, imsi)
+		if ue, ok := ues.eqs[imsi]; ok {
+			if ue.DataChan != nil {
+				close(ue.DataChan)
+			}
+			if ue.UDPListener != nil {
+				ue.UDPListener.Close()
+			}
+			delete(ues.eqs, imsi)
+		}
 	}
 }
 
@@ -78,7 +90,7 @@ func (ues *UserEquipments) GetUEs() []*UserEquipment {
 	return uesList
 }
 
-func (ues *UserEquipments) RegisterUE(imsi string) error {
+func (ues *UserEquipments) DoRegister(imsi string) error {
 	ues.mu.RLock()
 	defer ues.mu.RUnlock()
 	ue, ok := ues.eqs[imsi]
@@ -89,7 +101,7 @@ func (ues *UserEquipments) RegisterUE(imsi string) error {
 	return nil
 }
 
-func (ues *UserEquipments) CallViaUE(imsi, cdpn string) error {
+func (ues *UserEquipments) DoCall(imsi, cdpn string) error {
 	ues.mu.RLock()
 	defer ues.mu.RUnlock()
 	ue, ok := ues.eqs[imsi]

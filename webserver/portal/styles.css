@@ -2,7 +2,7 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    font-family: Arial, sans-serif;
+    font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
 }
 
 body {
@@ -32,8 +32,9 @@ h1 {
 
 /* Form */
 form {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    display: flex;
+    flex-direction: row;
+    /* grid-template-columns: repeat(auto-fit, minmax(250px, 2fr)); */
     gap: 15px;
     margin-bottom: 20px;
     background: #e9ecef;
@@ -42,12 +43,35 @@ form {
 }
 
 .form-group {
+    min-width: 250px;
     display: flex;
     flex-direction: column;
     background: white;
     padding: 10px;
     border-radius: 5px;
     box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+}
+
+.wideinput{
+    width: 150%;
+}
+
+.form-group2 {
+    min-width: 250px;
+    display: flex;
+    flex-direction: row;
+}
+
+.form-childgroup{
+    width: 50%;
+    padding: 10px;
+    background: white;
+    border-radius: 5px;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+}
+
+.form-childgroup > input, select {
+    margin-top: 5px;
 }
 
 .global{
@@ -75,6 +99,7 @@ input, select {
     border: 1px solid #ccc;
     border-radius: 5px;
     width: 100%;
+    font-size: large;
 }
 
 input:disabled, select:disabled{
@@ -116,7 +141,7 @@ table {
 
 th, td {
     border: 1px solid #ddd;
-    padding: 10px;
+    padding: 7px;
     text-align: center;
     transition: all 0.3s ease;
 }

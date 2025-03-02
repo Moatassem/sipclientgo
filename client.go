@@ -16,8 +16,9 @@ const (
 	OwnIPv4       string = "server_ipv4"
 	OwnSIPUdpPort string = "sip_udp_port"
 
+	//nolint:stylecheck
 	PcscfUdpSocket string = "pcscf_udp_socket"
-	ImsDomain      string = "ims_domain" //"sip:ims.mnc001.mcc001.3gppnetwork.org"
+	ImsDomain      string = "ims_domain"
 	Ki             string = "ki"
 	Opc            string = "opc"
 	Imsi           string = "imsi"

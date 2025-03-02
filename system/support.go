@@ -53,11 +53,11 @@ func GetLocalIPv4(getfirst bool) net.IP {
 	var serverIP net.IP
 	if len(serverIPs) == 1 {
 		serverIP = serverIPs[0]
-		// fmt.Println("Found:", serverIP)
+		fmt.Println("Found (1):", serverIP)
 	} else {
 		var idx int
 		for {
-			// fmt.Printf("Found (%d) interfaces:\n", len(serverIPs))
+			fmt.Printf("Found (%d):\n", len(serverIPs))
 			for i, s := range serverIPs {
 				fmt.Printf("%d- %s\n", i+1, s.String())
 			}
