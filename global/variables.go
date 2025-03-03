@@ -4,6 +4,8 @@ import (
 	"net"
 	"regexp"
 	"sync"
+
+	"github.com/gorilla/websocket"
 )
 
 const (
@@ -51,6 +53,7 @@ var (
 	// Opc         string
 	// Imsi        string
 
+	WSServer          *websocket.Conn
 	IsSystemBigEndian bool
 
 	MediaPath string

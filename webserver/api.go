@@ -17,6 +17,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 func StartWS(ipv4 string, htp int) {
@@ -72,6 +74,9 @@ func webHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		} else if strings.HasPrefix(r.URL.Path, "/portal/") {
 			serveStaticFiles(w, r)
+			return
+		} else if r.URL.Path == "/ws" {
+			handleWSConnection(w, r)
 			return
 		}
 	case http.MethodPost:
@@ -338,4 +343,50 @@ func buildDataJson() portalData {
 	}
 
 	return data
+}
+
+func handleWSConnection(w http.ResponseWriter, r *http.Request) {
+	// Upgrader to upgrade HTTP connection to WebSocket
+	var upgrader = websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		},
+	}
+
+	// Upgrade initial GET request to a WebSocket
+	ws, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	// defer ws.Close()
+
+	global.WSServer = ws
+
+	global.WtGrp.Add(1)
+	go listenToWS(global.WSServer)
+}
+
+func listenToWS(ws *websocket.Conn) {
+	defer global.WtGrp.Done()
+	defer ws.Close()
+	// Listen for messages from the client
+	for {
+		var msg map[string]any
+		err := ws.ReadJSON(&msg)
+		if err != nil {
+			fmt.Println("Error reading json.", err)
+			break
+		}
+		fmt.Printf("Received: %v\n", msg)
+
+		// Send the received message back to the client
+		// err = ws.WriteJSON(msg)
+		// if err != nil {
+		// 	fmt.Println("Error writing json.", err)
+		// 	break
+		// }
+	}
 }

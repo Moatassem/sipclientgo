@@ -51,7 +51,7 @@ func (ues *UserEquipments) AddUE(ue *UserEquipment) error {
 		return err
 	}
 	ues.eqs[ue.Imsi] = ue
-	system.LogInfo(system.LTRegistration, fmt.Sprintf("New UE startedon [%s:%d]", global.ClientIPv4.String(), ue.UdpPort))
+	system.LogInfo(system.LTRegistration, fmt.Sprintf("New UE started on [%s:%d]", global.ClientIPv4.String(), ue.UdpPort))
 	return nil
 }
 

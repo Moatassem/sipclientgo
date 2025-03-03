@@ -783,6 +783,8 @@ func logRegData(sipmsg *SipMessage, ue *UserEquipment) {
 	ue.MsIsdn = msisdn
 	ue.RegStatus = "Registered"
 
+	WSServer.WriteJSON(ue)
+
 	// fmt.Printf("Registration Successful for %s@%s\n", ue.Imsi, ImsDomain)
 	// fmt.Printf("Received MSISDN: %s\n", msisdn)
 	// fmt.Printf("Regigration Expires in: %s\n", expires)

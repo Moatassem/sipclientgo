@@ -7,6 +7,7 @@ const editData = document.getElementById('editData');
 const saveData = document.getElementById('saveData');
 const pcscfSocket = document.getElementById('pcscfSocket');
 const imsDomain = document.getElementById('imsDomain');
+const ws = new WebSocket(`ws://${location.host}/ws`);
 
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -201,7 +202,6 @@ refresh.addEventListener('click', event => {
 });
 
 
-
 function editRecord(row) {
     const cells = row.cells;
     document.getElementById('enabled').value = cells[1].textContent.toLowerCase();
@@ -258,3 +258,44 @@ async function performCall(row) {
     });
     if (!response.ok) alert('Error: ' + response.statusText);
 }
+
+
+
+ws.onopen = () => {
+    console.log('Connected to server');
+    // Send a message to the server
+    ws.send(JSON.stringify({ message: "Hello, Server!" }));
+};
+
+ws.onmessage = (event) => {
+    const msg = JSON.parse(event.data);
+
+    row = Array.from(dataTable.rows).find(row => row.cells[2].textContent === msg.imsi);
+    if (row) {
+        const cells = row.cells;
+        cells[5].textContent = msg.msisdn;
+        cells[6].textContent = msg.regStatus;
+        cells[7].textContent = msg.expires;
+
+        // document.getElementById('enabled').value = cells[1].textContent.toLowerCase();
+        // document.getElementById('imsi').value = cells[2].textContent;
+        // document.getElementById('ki').value = cells[3].textContent;
+        // document.getElementById('opc').value = cells[4].textContent;
+        // // document.getElementById('msisdn').value = cells[5].textContent;
+        // // document.getElementById('registration').value = cells[6].textContent;
+        // document.getElementById('expires').value = cells[7].textContent;
+        // document.getElementById('udpPort').value = cells[8].textContent;
+
+        ws.send(JSON.stringify({ message: "Record updated!" }));
+    }
+
+    console.log('Received:', msg);
+};
+
+ws.onclose = () => {
+    console.log('Disconnected from server');
+};
+
+ws.onerror = (error) => {
+    console.error('WebSocket Error:', error);
+};
