@@ -525,7 +525,7 @@ func sipStack(sipmsg *SipMessage, ss *SipSession, newSesType NewSessionType) {
 			switch trans.Method {
 			case REGISTER:
 				ss.FinalizeState()
-				logRegData(sipmsg, ss.UserEquipment)
+				ss.logRegData(sipmsg)
 				ss.DropMe()
 			case INFO:
 			case OPTIONS: //probing or keepalive
@@ -545,9 +545,10 @@ func sipStack(sipmsg *SipMessage, ss *SipSession, newSesType NewSessionType) {
 			case INVITE:
 				ss.SetState(state.Failed)
 				ss.SendRequest(ACK, trans, EmptyBody())
-				ss.DropMeTimed()
+				ss.DropMe()
 			case REGISTER:
 				ss.SetState(state.Failed)
+				ss.logRegData(sipmsg)
 				ss.DropMe()
 				if wwwauth := sipmsg.Headers.ValueHeader(WWW_Authenticate); wwwauth != "" {
 					go RegisterMe(ss.UserEquipment, wwwauth)

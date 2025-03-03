@@ -978,6 +978,10 @@ func CheckPendingTransaction(ss *SipSession, tx *Transaction) {
 	case PRACK:
 		ss.SetState(state.Failed)
 		ss.DropMe()
+	case REGISTER:
+		ss.SetState(state.TimedOut)
+		ss.logRegData(nil)
+		ss.DropMe()
 	default:
 		ss.ReleaseMe(fmt.Sprintf("In-dialogue %s timed-out", tx.Method.String()))
 	}

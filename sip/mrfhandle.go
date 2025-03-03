@@ -769,23 +769,34 @@ func extractParams(part string, paramRegex *regexp.Regexp) map[string]string {
 	return params
 }
 
-func logRegData(sipmsg *SipMessage, ue *UserEquipment) {
-	pau := sipmsg.Headers.Value("P-Associated-URI")
-	rgx := regexp.MustCompile("tel:([0-9]+)")
-	msisdn := rgx.FindStringSubmatch(pau)[1]
+func (ss *SipSession) logRegData(sipmsg *SipMessage) {
+	ue := ss.UserEquipment
 
-	cntct := sipmsg.Headers.Value("Contact")
+	msisdn := "N/A"
+	expires := ""
 
-	rgx = regexp.MustCompile(";expires=([0-9]+)")
-	expires := rgx.FindStringSubmatch(cntct)[1]
+	if sipmsg != nil {
 
-	ue.Expires = expires
+		if pau := sipmsg.Headers.Value("P-Associated-URI"); pau != "" {
+			rgx := regexp.MustCompile("tel:([0-9]+)")
+			if mtchs := rgx.FindStringSubmatch(pau); mtchs != nil {
+				msisdn = mtchs[1]
+			}
+		}
+
+		if cntct := sipmsg.Headers.Value("Contact"); cntct != "" {
+			rgx := regexp.MustCompile(";expires=([0-9]+)")
+			if mtchs := rgx.FindStringSubmatch(cntct); mtchs != nil {
+				expires = mtchs[1]
+			}
+		}
+	}
+
 	ue.MsIsdn = msisdn
-	ue.RegStatus = "Registered"
+	if expires != "" {
+		ue.Expires = expires
+	}
+	ue.RegStatus = ss.GetState().String()
 
 	WSServer.WriteJSON(ue)
-
-	// fmt.Printf("Registration Successful for %s@%s\n", ue.Imsi, ImsDomain)
-	// fmt.Printf("Received MSISDN: %s\n", msisdn)
-	// fmt.Printf("Regigration Expires in: %s\n", expires)
 }
