@@ -17,9 +17,10 @@ LABEL maintainer="eng.moatassem@gmail.com"
 
 RUN mkdir -p /sipclient/audio
 
-COPY --from=build /sipclient/client /sipclient/client
+COPY --from=build /sipclient/sipclient /sipclient/sipclient
 COPY ./audio /sipclient/audio
+COPY ./data.json /sipclient/data.json
 
 WORKDIR /sipclient
 
-CMD ["./client"]
+CMD ["./sipclient"]
