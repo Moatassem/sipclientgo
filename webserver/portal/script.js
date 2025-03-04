@@ -160,6 +160,12 @@ function populateTable(data) {
         regButton.title = 'Register';
         regButton.addEventListener('click', () => performRegister(newRow));
 
+        const unRegButton = document.createElement('button');
+        unRegButton.classList.add('actions');
+        unRegButton.textContent = '⚡';
+        unRegButton.title = 'Unregister';
+        unRegButton.addEventListener('click', () => performRegister(newRow, true));
+
         const callButton = document.createElement('button');
         callButton.classList.add('actions');
         callButton.textContent = "📞";
@@ -174,6 +180,7 @@ function populateTable(data) {
 
         actionCell.appendChild(editButton);
         actionCell.appendChild(regButton);
+        actionCell.appendChild(unRegButton);
         actionCell.appendChild(callButton);
         actionCell.appendChild(deleteButton);
     });
@@ -235,10 +242,15 @@ function performDelete(row) {
 }
 
 
-async function performRegister(row) {
+async function performRegister(row, unreg) {
     const params = { imsi: row.cells[2].textContent };
     const queryString = new URLSearchParams(params).toString();
-    const url = `/register?${queryString}`;
+    var url
+    if (unreg) {
+        url = `/unregister?${queryString}`;
+    } else {
+        url = `/register?${queryString}`;
+    }
 
     const response = await fetch(url, {
         method: 'PUT',

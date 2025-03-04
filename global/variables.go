@@ -243,7 +243,7 @@ var (
 	// Request Headers
 
 	RequestHeaderCHs = []string{"Via", "From", "To", "Call-ID", "CSeq", "Contact", "Supported", "Allow", "Max-Forwards", "Route", "Date", "User-Agent", "User-to-User", "Content-Type", "Content-Length", "Content-Disposition"}
-	OtherCHs         = []string{"Referred-By", "Diversion", "Record-Route", "History-Info", "Privacy", "Geolocation", "Require", "Authorization", "Identity", "Proxy-Authorization", "Session-Expires", "Min-SE", "Subject", "Allow-Events", "Accept", "MIME-Version"}
+	OtherCHs         = []string{"Referred-By", "Diversion", "Record-Route", "History-Info", "Privacy", "Geolocation", "Require", "Authorization", "Identity", "Proxy-Authorization", "Expires", "Session-Expires", "Min-SE", "Subject", "Allow-Events", "Accept", "MIME-Version"}
 
 	// returns proper case for headers
 	DicRequestHeaders = map[Method][]string{

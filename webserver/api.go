@@ -95,7 +95,15 @@ func webHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPut:
 		if r.URL.Path == "/register" {
 			imsi := r.URL.Query().Get("imsi")
-			if err := sip.UEs.DoRegister(imsi); err != nil {
+			if err := sip.UEs.DoRegister(imsi, false); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			return
+		} else if r.URL.Path == "/unregister" {
+			imsi := r.URL.Query().Get("imsi")
+			if err := sip.UEs.DoRegister(imsi, true); err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}

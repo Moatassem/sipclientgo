@@ -90,14 +90,18 @@ func (ues *UserEquipments) GetUEs() []*UserEquipment {
 	return uesList
 }
 
-func (ues *UserEquipments) DoRegister(imsi string) error {
+func (ues *UserEquipments) DoRegister(imsi string, unreg bool) error {
 	ues.mu.RLock()
 	defer ues.mu.RUnlock()
 	ue, ok := ues.eqs[imsi]
 	if !ok {
 		return fmt.Errorf("UE not found")
 	}
-	go RegisterMe(ue, "")
+	if unreg {
+		go UnregisterMe(ue, "")
+	} else {
+		go RegisterMe(ue, "")
+	}
 	return nil
 }
 

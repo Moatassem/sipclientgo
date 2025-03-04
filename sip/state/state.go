@@ -45,6 +45,7 @@ const (
 	BeingReinvited // for ReInvite
 
 	BeingRegistered
+	BeingUnregistered
 
 	Registered
 	Unregistered
@@ -52,37 +53,38 @@ const (
 
 var (
 	dicNames = map[SessionState]string{
-		NotSet:           "NotSet",
-		BeingEstablished: "BeingEstablished",
-		Established:      "Established",
-		BeingCleared:     "BeingCleared",
-		Cleared:          "Cleared",
-		BeingRejected:    "BeingRejected",
-		Rejected:         "Rejected",
-		BeingCancelled:   "BeingCancelled",
-		Cancelled:        "Cancelled",
-		BeingFailed:      "BeingFailed",
-		Failed:           "Failed",
-		BeingDenied:      "BeingDenied",
-		Denied:           "Denied",
-		BeingDropped:     "BeingDropped",
-		Dropped:          "Dropped",
-		BeingRedirected:  "BeingRedirected",
-		Redirected:       "Redirected",
-		BeingReferred:    "BeingReferred",
-		Referred:         "Referred",
-		BeingNeglected:   "BeingNeglected",
-		Neglected:        "Neglected",
-		BeingRestored:    "BeingRestored",
-		BeingConnected:   "BeingConnected",
-		BeingProbed:      "BeingProbed",
-		Probed:           "Probed",
-		BeingUpdated:     "BeingUpdated",
-		BeingReinvited:   "BeingReinvited",
-		TimedOut:         "TimedOut",
-		BeingRegistered:  "BeingRegistered",
-		Registered:       "Registered",
-		Unregistered:     "Unregistered",
+		NotSet:            "NotSet",
+		BeingEstablished:  "BeingEstablished",
+		Established:       "Established",
+		BeingCleared:      "BeingCleared",
+		Cleared:           "Cleared",
+		BeingRejected:     "BeingRejected",
+		Rejected:          "Rejected",
+		BeingCancelled:    "BeingCancelled",
+		Cancelled:         "Cancelled",
+		BeingFailed:       "BeingFailed",
+		Failed:            "Failed",
+		BeingDenied:       "BeingDenied",
+		Denied:            "Denied",
+		BeingDropped:      "BeingDropped",
+		Dropped:           "Dropped",
+		BeingRedirected:   "BeingRedirected",
+		Redirected:        "Redirected",
+		BeingReferred:     "BeingReferred",
+		Referred:          "Referred",
+		BeingNeglected:    "BeingNeglected",
+		Neglected:         "Neglected",
+		BeingRestored:     "BeingRestored",
+		BeingConnected:    "BeingConnected",
+		BeingProbed:       "BeingProbed",
+		Probed:            "Probed",
+		BeingUpdated:      "BeingUpdated",
+		BeingReinvited:    "BeingReinvited",
+		TimedOut:          "TimedOut",
+		BeingRegistered:   "BeingRegistered",
+		BeingUnregistered: "BeingUnregistered",
+		Registered:        "Registered",
+		Unregistered:      "Unregistered",
 	}
 )
 

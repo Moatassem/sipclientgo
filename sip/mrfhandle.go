@@ -586,7 +586,8 @@ func RegisterMe(ue *UserEquipment, wwwauth string) {
 	hdrs.AddHeader(P_Access_Network_Info, "IEEE-802.3") //"3GPP-E-UTRAN-FDD; utran-cell-id-3gpp=001010001000019B")
 	hdrs.AddHeader(Expires, "600000")
 	hdrs.AddHeader(Supported, "path")
-	hdrs.AddHeader(Contact, fmt.Sprintf(`<sip:%s>;+g.3gpp.icsi-ref="urn:Aurn-7:3gpp-service.ims.icsi.mmtel";+g.3gpp.smsip;video;+sip.instance="<urn:gsma:imei:86728703-952237-0>";+g.3gpp.accesstype="wired"`, system.GetUDPAddrStringFromConn(ue.UDPListener)))
+	hdrs.AddHeader(Contact, fmt.Sprintf(`<sip:%s;transport=udp>;+g.3gpp.icsi-ref="urn:Aurn-7:3gpp-service.ims.icsi.mmtel";+g.3gpp.smsip;video;+sip.instance="<urn:gsma:imei:86728703-952237-0>";+g.3gpp.accesstype="wired"`, system.GetUDPAddrStringFromConn(ue.UDPListener)))
+	// hdrs.AddHeader(Contact, fmt.Sprintf(`<sip:%s>;+g.3gpp.icsi-ref="urn:Aurn-7:3gpp-service.ims.icsi.mmtel";+g.3gpp.smsip;video;+sip.instance="<urn:gsma:imei:86728703-952237-0>";+g.3gpp.accesstype="wired"`, system.GetUDPAddrStringFromConn(ue.UDPListener)))
 
 	if wwwauth != "" {
 		auths := ParseWWWAuthenticateOptimized(wwwauth)
@@ -598,6 +599,39 @@ func RegisterMe(ue *UserEquipment, wwwauth string) {
 	trans := ss.CreateSARequest(RequestPack{Method: REGISTER, Max70: true, RUriUP: ue.Imsi, FromUP: ue.Imsi, CustomHeaders: hdrs}, EmptyBody())
 
 	ss.SetState(state.BeingRegistered)
+	ss.AddMe()
+	ss.SendSTMessage(trans)
+}
+
+func UnregisterMe(ue *UserEquipment, wwwauth string) {
+	if PCSCFSocket == nil {
+		system.LogError(system.LTConfiguration, "Missing PCSCF Socket")
+		return
+	}
+
+	ss := NewSS(OUTBOUND)
+	ss.RemoteUDP = PCSCFSocket
+	ss.SIPUDPListenser = ue.UDPListener
+	ss.UserEquipment = ue
+	ss.IsUnregistering = true
+
+	hdrs := NewSipHeaders()
+	// hdrs.AddHeader(P_Access_Network_Info, "IEEE-802.3") //"3GPP-E-UTRAN-FDD; utran-cell-id-3gpp=001010001000019B")
+	hdrs.AddHeader(Expires, "0")
+	// hdrs.AddHeader(Supported, "path")
+	hdrs.AddHeader(Contact, fmt.Sprintf(`<sip:%s;transport=udp>;+g.3gpp.icsi-ref="urn:Aurn-7:3gpp-service.ims.icsi.mmtel";+g.3gpp.smsip;video;+sip.instance="<urn:gsma:imei:86728703-952237-0>";+g.3gpp.accesstype="wired"`, system.GetUDPAddrStringFromConn(ue.UDPListener)))
+	// hdrs.AddHeader(Contact, fmt.Sprintf(`<sip:%s>;+g.3gpp.icsi-ref="urn:Aurn-7:3gpp-service.ims.icsi.mmtel";+g.3gpp.smsip;video;+sip.instance="<urn:gsma:imei:86728703-952237-0>";+g.3gpp.accesstype="wired"`, system.GetUDPAddrStringFromConn(ue.UDPListener)))
+
+	if wwwauth != "" {
+		auths := ParseWWWAuthenticateOptimized(wwwauth)
+		author := computeAuthorizationHeader(ImsDomain, auths[0].Params["nonce"], REGISTER.String(), "00000001", ue)
+		hdrs.AddHeader(Authorization, author)
+		ue.Authorization = author
+	}
+
+	trans := ss.CreateSARequest(RequestPack{Method: REGISTER, Max70: true, RUriUP: ue.Imsi, FromUP: ue.Imsi, CustomHeaders: hdrs}, EmptyBody())
+
+	ss.SetState(state.BeingUnregistered)
 	ss.AddMe()
 	ss.SendSTMessage(trans)
 }
@@ -617,7 +651,7 @@ func CallViaUE(ue *UserEquipment, cdpn string) {
 	hdrs.AddHeader(P_Access_Network_Info, "IEEE-802.3") //"3GPP-E-UTRAN-FDD; utran-cell-id-3gpp=001010001000019B")
 	// hdrs.AddHeader(Expires, "600000")
 	hdrs.AddHeader(Supported, "path")
-	hdrs.AddHeader(Contact, fmt.Sprintf(`<sip:%s>;+g.3gpp.icsi-ref="urn:Aurn-7:3gpp-service.ims.icsi.mmtel";+g.3gpp.smsip;video;+sip.instance="<urn:gsma:imei:86728703-952237-0>";+g.3gpp.accesstype="wired"`, system.GetUDPAddrStringFromConn(ue.UDPListener)))
+	hdrs.AddHeader(Contact, fmt.Sprintf(`<sip:%s@%s>;+g.3gpp.icsi-ref="urn:Aurn-7:3gpp-service.ims.icsi.mmtel";+g.3gpp.smsip;video;+sip.instance="<urn:gsma:imei:86728703-952237-0>";+g.3gpp.accesstype="wired"`, ue.Imsi, system.GetUDPAddrStringFromConn(ue.UDPListener)))
 
 	hdrs.AddHeader(Authorization, ue.Authorization)
 

@@ -551,7 +551,11 @@ func sipStack(sipmsg *SipMessage, ss *SipSession, newSesType NewSessionType) {
 				ss.logRegData(sipmsg)
 				ss.DropMe()
 				if wwwauth := sipmsg.Headers.ValueHeader(WWW_Authenticate); wwwauth != "" {
-					go RegisterMe(ss.UserEquipment, wwwauth)
+					if ss.IsUnregistering {
+						go UnregisterMe(ss.UserEquipment, wwwauth)
+					} else {
+						go RegisterMe(ss.UserEquipment, wwwauth)
+					}
 				}
 			case OPTIONS: //probing or keepalive
 				if ss.Mode == mode.KeepAlive {

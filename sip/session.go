@@ -48,6 +48,7 @@ type SipSession struct {
 	SIPUDPListenser  *net.UDPConn
 	RemoteUserAgent  *SipUdpUserAgent
 	UserEquipment    *UserEquipment
+	IsUnregistering  bool
 
 	RemoteMedia    *net.UDPAddr
 	MediaListener  *net.UDPConn
@@ -404,6 +405,9 @@ func (session *SipSession) BuildSARequestHeaders(st *Transaction, rqstpk Request
 		remoteIP = sl.HostPart
 	case INVITE:
 		sl.UriParameters = &map[string]string{"user": "phone"}
+		sl.HostPart = ImsDomain
+		localIP = sl.HostPart
+		remoteIP = sl.HostPart
 	}
 	sl.BuildRURI()
 	session.RemoteContactURI = sl.RUri
