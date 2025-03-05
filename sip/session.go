@@ -1059,16 +1059,21 @@ func (session *SipSession) GetState() state.SessionState {
 	return session.state
 }
 
-func (session *SipSession) SetState(ss state.SessionState) {
+// Returns the original state
+func (session *SipSession) SetState(ss state.SessionState) state.SessionState {
 	session.stateLock.Lock()
 	defer session.stateLock.Unlock()
+	st := session.state
 	session.state = ss
+	return st
 }
 
-func (session *SipSession) FinalizeState() {
+// Returns the finalized state
+func (session *SipSession) FinalizeState() state.SessionState {
 	session.stateLock.Lock()
 	defer session.stateLock.Unlock()
 	session.state = session.state.FinalizeMe()
+	return session.state
 }
 
 func (session *SipSession) IsFinalized() bool {
