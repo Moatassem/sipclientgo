@@ -547,11 +547,12 @@ func sipStack(sipmsg *SipMessage, ss *SipSession, newSesType NewSessionType) {
 				ss.SendRequest(ACK, trans, EmptyBody())
 				ss.DropMe()
 			case REGISTER:
+				ssstate := ss.GetState()
 				ss.SetState(state.Failed)
 				ss.logRegData(sipmsg)
-				ss.DropMe()
+				defer ss.DropMe()
 				if wwwauth := sipmsg.Headers.ValueHeader(WWW_Authenticate); wwwauth != "" {
-					if ss.IsUnregistering {
+					if ssstate == state.BeingUnregistered {
 						go UnregisterMe(ss.UserEquipment, wwwauth)
 					} else {
 						go RegisterMe(ss.UserEquipment, wwwauth)

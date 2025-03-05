@@ -48,7 +48,6 @@ type SipSession struct {
 	SIPUDPListenser  *net.UDPConn
 	RemoteUserAgent  *SipUdpUserAgent
 	UserEquipment    *UserEquipment
-	IsUnregistering  bool
 
 	RemoteMedia    *net.UDPAddr
 	MediaListener  *net.UDPConn

@@ -613,7 +613,6 @@ func UnregisterMe(ue *UserEquipment, wwwauth string) {
 	ss.RemoteUDP = PCSCFSocket
 	ss.SIPUDPListenser = ue.UDPListener
 	ss.UserEquipment = ue
-	ss.IsUnregistering = true
 
 	hdrs := NewSipHeaders()
 	// hdrs.AddHeader(P_Access_Network_Info, "IEEE-802.3") //"3GPP-E-UTRAN-FDD; utran-cell-id-3gpp=001010001000019B")
