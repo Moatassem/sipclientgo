@@ -261,6 +261,7 @@ async function performRegister(row, unreg) {
 
 async function performCall(row) {
     cdpn = prompt(`Enter CDPN to dial from UE (${row.cells[5].textContent})`);
+    if (!cdpn) return;
     const params = { imsi: row.cells[2].textContent, cdpn: cdpn };
     const queryString = new URLSearchParams(params).toString();
     const url = `/call?${queryString}`;

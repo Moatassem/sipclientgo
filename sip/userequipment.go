@@ -112,6 +112,9 @@ func (ues *UserEquipments) DoCall(imsi, cdpn string) error {
 	if !ok {
 		return fmt.Errorf("UE not found")
 	}
+	if cdpn == "" {
+		return fmt.Errorf("invalid CDPN")
+	}
 	go CallViaUE(ue, cdpn)
 	return nil
 }

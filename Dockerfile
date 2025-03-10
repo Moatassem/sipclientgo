@@ -7,10 +7,10 @@ COPY go.mod go.sum ./
 RUN go mod download
 RUN go mod verify
 
-# Copy everything except ./audio
 COPY . .
 RUN rm -rf ./audio
 RUN rm -rf ./webserver/portal
+RUN rm data.json
 RUN go build -o sipclient .
 
 FROM alpine AS run
@@ -26,7 +26,3 @@ COPY ./webserver/portal /sipclient/webserver/portal
 WORKDIR /sipclient
 
 CMD ["./sipclient"]
-
-
-# docker build -t sipclient .
-# docker run -d --name sipclient -e http_port="8085" -p 8085:8085 -p 5067:5067/udp -p 5069:5069/udp sipclient:latest
