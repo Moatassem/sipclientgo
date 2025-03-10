@@ -284,7 +284,7 @@ func processPDU(payload []byte) (*SipMessage, []byte, error) {
 	return sipmsg, payload, nil
 }
 
-func sessionGetter(sipmsg *SipMessage, sesmp SessionsMap) (*SipSession, NewSessionType) {
+func sessionGetter(sipmsg *SipMessage, ue *UserEquipment) (*SipSession, NewSessionType) {
 	defer func() {
 		if r := recover(); r != nil {
 			system.LogCallStack(r)
@@ -292,7 +292,7 @@ func sessionGetter(sipmsg *SipMessage, sesmp SessionsMap) (*SipSession, NewSessi
 	}()
 
 	callID := sipmsg.CallID
-	ss, ok := sesmp.Load(callID)
+	ss, ok := ue.SesMap.Load(callID)
 	if ok {
 		sipses := ss
 		if sipses.IsDuplicateMessage(sipmsg) {
@@ -304,7 +304,8 @@ func sessionGetter(sipmsg *SipMessage, sesmp SessionsMap) (*SipSession, NewSessi
 			return nil, Response
 		}
 		sipses := NewSIPSession(sipmsg)
-		sesmp.Store(callID, sipses)
+		ue.SesMap.Store(callID, sipses)
+		sipses.UserEquipment = ue
 		if sipmsg.ToTag == "" {
 			switch sipmsg.GetMethod() {
 			case INVITE:

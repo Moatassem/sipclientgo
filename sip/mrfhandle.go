@@ -48,6 +48,46 @@ func (ss *SipSession) RouteRequestInternal(trans *Transaction, sipmsg1 *SipMessa
 
 // ============================================================================
 // MRF methods
+
+func (ss *SipSession) buildSDPOffer() {
+	ss.MediaListener = MediaPorts.ReserveSocket()
+
+	formats := make([]*sdp.Format, 2)
+	formats = append(formats, &sdp.Format{
+		Payload: uint8,
+	})
+
+	var newmedia *sdp.Media
+	newmedia = &sdp.Media{
+		Chosen:     true,
+		Type:       "audio",
+		Port:       system.GetUDPortFromConn(ss.MediaListener),
+		Proto:      "RTP/AVP",
+		Format:     []*sdp.Format{audioFormat},
+		Attributes: []*sdp.Attr{{Name: "ptime", Value: "20"}},
+		Mode:       sdp.NegotiateMode(sdp.SendRecv, sdpses.GetEffectiveMediaDirective())}
+
+	mySDP := &sdp.Session{
+		Origin: &sdp.Origin{
+			Username:       "mt",
+			SessionID:      ss.SDPSessionID,
+			SessionVersion: ss.SDPSessionVersion,
+			Network:        sdp.NetworkInternet,
+			Type:           sdp.TypeIPv4,
+			Address:        ClientIPv4.String(),
+		},
+		Name: "sipclient",
+		Connection: &sdp.Connection{
+			Network: sdp.NetworkInternet,
+			Type:    sdp.TypeIPv4,
+			Address: ClientIPv4.String(),
+			TTL:     0,
+		},
+		Media: newmedia,
+	}
+
+}
+
 func (ss *SipSession) buildSDPAnswer(sipmsg *SipMessage) (sipcode, q850code int, warn string) {
 	sdpbytes, _ := sipmsg.GetBodyPart(SDP)
 	sdpses, err := sdp.Parse(sdpbytes)
@@ -61,7 +101,7 @@ func (ss *SipSession) buildSDPAnswer(sipmsg *SipMessage) (sipcode, q850code int,
 	var conn *sdp.Connection = sdpses.Connection
 	var audioFormat *sdp.Format
 	var dtmfFormat *sdp.Format
-	for i := 0; i < len(sdpses.Media); i++ {
+	for i := range sdpses.Media {
 		media = sdpses.Media[i]
 		if media.Type != sdp.Audio || media.Port == 0 || media.Proto != sdp.RtpAvp || (conn == nil && len(media.Connection) == 0) { //|| media.Mode != sdp.SendRecv
 			continue
@@ -186,7 +226,7 @@ func (ss *SipSession) buildSDPAnswer(sipmsg *SipMessage) (sipcode, q850code int,
 		// },
 	}
 
-	for i := 0; i < len(sdpses.Media); i++ {
+	for i := range sdpses.Media {
 		media := sdpses.Media[i]
 		var newmedia *sdp.Media
 		if media.Chosen {
@@ -563,11 +603,10 @@ func StartUEListener(ue *UserEquipment) error {
 	if err != nil {
 		return err
 	}
-	ue.DataChan = make(chan Packet, QueueSize)
-	startWorkers(ul, ue.DataChan, ue.SesMap)
-	udpLoopWorkers(ul, ue.DataChan, ue.SesMap)
 	ue.UDPListener = ul
-	// go RegisterMe(ue, "")
+	ue.DataChan = make(chan Packet, QueueSize)
+	startWorkers(ue, ue.DataChan)
+	udpLoopWorkers(ue, ue.DataChan)
 	return nil
 }
 
@@ -586,7 +625,7 @@ func RegisterMe(ue *UserEquipment, wwwauth string) {
 	hdrs.AddHeader(P_Access_Network_Info, "IEEE-802.3") //"3GPP-E-UTRAN-FDD; utran-cell-id-3gpp=001010001000019B")
 	hdrs.AddHeader(Expires, "600000")
 	hdrs.AddHeader(Supported, "path")
-	hdrs.AddHeader(Contact, fmt.Sprintf(`<sip:%s;transport=udp>;+g.3gpp.icsi-ref="urn:Aurn-7:3gpp-service.ims.icsi.mmtel";+g.3gpp.smsip;video;+sip.instance="<urn:gsma:imei:86728703-952237-0>";+g.3gpp.accesstype="wired"`, system.GetUDPAddrStringFromConn(ue.UDPListener)))
+	hdrs.AddHeader(Contact, fmt.Sprintf(`<sip:%s@%s;transport=udp>;+g.3gpp.icsi-ref="urn:Aurn-7:3gpp-service.ims.icsi.mmtel";+g.3gpp.smsip;video;+sip.instance="<urn:gsma:imei:86728703-952237-0>";+g.3gpp.accesstype="wired"`, ue.Imsi, system.GetUDPAddrStringFromConn(ue.UDPListener)))
 	// hdrs.AddHeader(Contact, fmt.Sprintf(`<sip:%s>;+g.3gpp.icsi-ref="urn:Aurn-7:3gpp-service.ims.icsi.mmtel";+g.3gpp.smsip;video;+sip.instance="<urn:gsma:imei:86728703-952237-0>";+g.3gpp.accesstype="wired"`, system.GetUDPAddrStringFromConn(ue.UDPListener)))
 
 	if wwwauth != "" {
@@ -831,5 +870,7 @@ func (ss *SipSession) logRegData(sipmsg *SipMessage) {
 	}
 	ue.RegStatus = ss.GetState().String()
 
-	WSServer.WriteJSON(ue)
+	if WSServer != nil {
+		WSServer.WriteJSON(ue)
+	}
 }

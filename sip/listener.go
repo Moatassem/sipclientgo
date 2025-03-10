@@ -22,15 +22,15 @@ type Packet struct {
 	bytesCount int
 }
 
-func startWorkers(conn *net.UDPConn, queue <-chan Packet, sesmp SessionsMap) {
+func startWorkers(ue *UserEquipment, queue <-chan Packet) {
 	global.WtGrp.Add(WorkerCount)
 	atomic.AddInt32(&global.WtGrpC, int32(WorkerCount))
 	for range WorkerCount {
-		go worker(conn, queue, sesmp)
+		go worker(ue, queue)
 	}
 }
 
-func udpLoopWorkers(conn *net.UDPConn, queue chan<- Packet, sesmp SessionsMap) {
+func udpLoopWorkers(ue *UserEquipment, queue chan<- Packet) {
 	global.WtGrp.Add(1)
 	atomic.AddInt32(&global.WtGrpC, 1)
 	defer func() {
@@ -38,13 +38,13 @@ func udpLoopWorkers(conn *net.UDPConn, queue chan<- Packet, sesmp SessionsMap) {
 		atomic.AddInt32(&global.WtGrpC, -1)
 		if r := recover(); r != nil {
 			system.LogCallStack(r)
-			udpLoopWorkers(conn, queue, sesmp)
+			udpLoopWorkers(ue, queue)
 		}
 	}()
 	go func() {
 		for {
 			buf := global.BufferPool.Get().(*[]byte)
-			n, addr, err := conn.ReadFromUDP(*buf)
+			n, addr, err := ue.UDPListener.ReadFromUDP(*buf)
 			if err != nil {
 				break
 			}
@@ -53,15 +53,15 @@ func udpLoopWorkers(conn *net.UDPConn, queue chan<- Packet, sesmp SessionsMap) {
 	}()
 }
 
-func worker(conn *net.UDPConn, queue <-chan Packet, sesmp SessionsMap) {
+func worker(ue *UserEquipment, queue <-chan Packet) {
 	defer global.WtGrp.Done()
 	defer atomic.AddInt32(&global.WtGrpC, -1)
 	for packet := range queue {
-		processPacket(packet, conn, sesmp)
+		processPacket(packet, ue)
 	}
 }
 
-func processPacket(packet Packet, conn *net.UDPConn, sesmp SessionsMap) {
+func processPacket(packet Packet, ue *UserEquipment) {
 	pdu := (*packet.buffer)[:packet.bytesCount]
 	for {
 		if len(pdu) == 0 {
@@ -75,10 +75,10 @@ func processPacket(packet Packet, conn *net.UDPConn, sesmp SessionsMap) {
 		} else if msg == nil {
 			break
 		}
-		ss, newSesType := sessionGetter(msg, sesmp)
+		ss, newSesType := sessionGetter(msg, ue)
 		if ss != nil {
 			ss.RemoteUDP = packet.sourceAddr
-			ss.SIPUDPListenser = conn
+			ss.SIPUDPListenser = ue.UDPListener
 		}
 		sipStack(msg, ss, newSesType)
 		pdu = pdutmp

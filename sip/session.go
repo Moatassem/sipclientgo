@@ -1172,12 +1172,12 @@ func (session *SipSession) DropMe() {
 		pc, f, l, ok := runtime.Caller(1) // pc, _, _, ok := runtime.Caller(1)
 		details := runtime.FuncForPC(pc)
 		if ok && details != nil { // f, l := details.FileLine(pc)
-			fmt.Printf(" >> [func (%s) - file (%s) - line (%d)]\n", details.Name(), f, l)
+			fmt.Printf("\nfunc (%s) - file (%s) - line (%d)\n", details.Name(), f, l)
 		}
 		return
 	}
-	fmt.Println("Session:", session.CallID, "State:", session.state.String())
 	session.IsDisposed = true
+	fmt.Println("Session:", session.CallID, "State:", session.state.String())
 	MediaPorts.ReleaseSocket(session.MediaListener)
 	close(session.maxDprobDoneChan)
 	close(session.rtpChan)
