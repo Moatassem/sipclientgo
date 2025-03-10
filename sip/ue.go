@@ -45,16 +45,19 @@ func (ues *UserEquipments) AddUE(ue *UserEquipment) error {
 	if _, ok := ues.eqs[ue.Imsi]; ok {
 		return fmt.Errorf("UE already exists")
 	}
+
 	for k, v := range ues.eqs {
 		if ue.UdpPort == v.UdpPort {
 			return fmt.Errorf("UDP port already in use with UE: %s", k)
 		}
 	}
+
+	ue.SesMap = NewConcurrentMapMutex[SipSession]()
+
 	err := StartUEListener(ue)
 	if err != nil {
 		return err
 	}
-	ue.SesMap = NewConcurrentMapMutex[SipSession]()
 	ues.eqs[ue.Imsi] = ue
 	system.LogInfo(system.LTRegistration, fmt.Sprintf("New UE started on [%s:%d]", global.ClientIPv4.String(), ue.UdpPort))
 	return nil
