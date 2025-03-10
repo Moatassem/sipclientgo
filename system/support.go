@@ -138,6 +138,17 @@ func AreUAddrsEqual(addr1, addr2 *net.UDPAddr) bool {
 	return addr1.IP.Equal(addr2.IP) && addr1.Port == addr2.Port && addr1.Zone == addr2.Zone
 }
 
+func AreUDPConnsEqual(conn1, conn2 *net.UDPConn) bool {
+	if conn1 == nil || conn2 == nil {
+		return conn1 == conn2
+	}
+
+	addr1 := conn1.LocalAddr()
+	addr2 := conn2.LocalAddr()
+
+	return addr1.String() == addr2.String()
+}
+
 // ============================================================
 
 func GenerateViaWithoutBranch(conn *net.UDPConn) string {

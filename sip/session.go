@@ -1161,7 +1161,7 @@ func (session *SipSession) Ack3xxTo6xxFinalize() {
 }
 
 func (session *SipSession) AddMe() {
-	Sessions.Store(session.CallID, session)
+	session.UserEquipment.SesMap.Store(session.CallID, session)
 }
 
 func (session *SipSession) DropMe() {
@@ -1181,7 +1181,7 @@ func (session *SipSession) DropMe() {
 	MediaPorts.ReleaseSocket(session.MediaListener)
 	close(session.maxDprobDoneChan)
 	close(session.rtpChan)
-	Sessions.Delete(session.CallID)
+	session.UserEquipment.SesMap.Delete(session.CallID)
 }
 
 func (ss *SipSession) DropMeTimed() {

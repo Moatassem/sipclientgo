@@ -564,8 +564,8 @@ func StartUEListener(ue *UserEquipment) error {
 		return err
 	}
 	ue.DataChan = make(chan Packet, QueueSize)
-	startWorkers(ul, ue.DataChan)
-	udpLoopWorkers(ul, ue.DataChan)
+	startWorkers(ul, ue.DataChan, ue.SesMap)
+	udpLoopWorkers(ul, ue.DataChan, ue.SesMap)
 	ue.UDPListener = ul
 	// go RegisterMe(ue, "")
 	return nil

@@ -10,18 +10,22 @@ import (
 
 var UEs *UserEquipments = NewUserEquipments()
 
+type SessionsMap = *ConcurrentMapMutex[SipSession]
+
 type UserEquipment struct {
-	Enabled       bool         `json:"enabled"`
-	Imsi          string       `json:"imsi"`
-	Ki            string       `json:"ki"`
-	Opc           string       `json:"opc"`
-	MsIsdn        string       `json:"msisdn"`
-	RegStatus     string       `json:"regStatus"`
-	Expires       string       `json:"expires"`
-	UdpPort       int          `json:"udpPort"`
-	Authorization string       `json:"-"`
-	UDPListener   *net.UDPConn `json:"-"`
-	DataChan      chan Packet  `json:"-"`
+	Enabled       bool        `json:"enabled"`
+	Imsi          string      `json:"imsi"`
+	Ki            string      `json:"ki"`
+	Opc           string      `json:"opc"`
+	MsIsdn        string      `json:"msisdn"`
+	RegStatus     string      `json:"regStatus"`
+	Expires       string      `json:"expires"`
+	UdpPort       int         `json:"udpPort"`
+	Authorization string      `json:"-"`
+	SesMap        SessionsMap `json:"-"`
+
+	UDPListener *net.UDPConn `json:"-"`
+	DataChan    chan Packet  `json:"-"`
 }
 
 type UserEquipments struct {
@@ -50,6 +54,7 @@ func (ues *UserEquipments) AddUE(ue *UserEquipment) error {
 	if err != nil {
 		return err
 	}
+	ue.SesMap = NewConcurrentMapMutex[SipSession]()
 	ues.eqs[ue.Imsi] = ue
 	system.LogInfo(system.LTRegistration, fmt.Sprintf("New UE started on [%s:%d]", global.ClientIPv4.String(), ue.UdpPort))
 	return nil

@@ -5,14 +5,8 @@ import (
 	"sipclientgo/global"
 )
 
-var (
-	Sessions ConcurrentMapMutex
-)
-
 func StartServer() {
 	fmt.Print("Initializing Global Parameters...")
-	Sessions = NewConcurrentMapMutex()
-
 	global.InitializeEngine()
 	fmt.Println("Ready!")
 

@@ -1,45 +1,48 @@
 package sip
 
 import (
+	"maps"
 	"sync"
 )
 
-type ConcurrentMapMutex struct {
-	_map map[string]*SipSession
-	mu   sync.RWMutex
+type ConcurrentMapMutex[T any] struct {
+	datamp map[string]*T
+	mu     sync.RWMutex
 }
 
-func NewConcurrentMapMutex() ConcurrentMapMutex {
-	return ConcurrentMapMutex{_map: make(map[string]*SipSession)}
+func NewConcurrentMapMutex[T any]() *ConcurrentMapMutex[T] {
+	return &ConcurrentMapMutex[T]{datamp: make(map[string]*T)}
 }
 
-func (c *ConcurrentMapMutex) Store(ky string, ss *SipSession) {
+func (c *ConcurrentMapMutex[T]) Store(ky string, ss *T) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c._map[ky] = ss
+	c.datamp[ky] = ss
 }
 
-func (c *ConcurrentMapMutex) Delete(ky string) {
+func (c *ConcurrentMapMutex[T]) Delete(ky string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	delete(c._map, ky)
+	delete(c.datamp, ky)
 }
 
-func (c *ConcurrentMapMutex) Load(ky string) (*SipSession, bool) {
+func (c *ConcurrentMapMutex[T]) Load(ky string) (*T, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	s, ok := c._map[ky]
+	s, ok := c.datamp[ky]
 	return s, ok
 }
 
-func (c *ConcurrentMapMutex) Range() map[string]*SipSession {
+func (c *ConcurrentMapMutex[T]) Range() map[string]*T {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c._map
+	copy := make(map[string]*T, len(c.datamp))
+	maps.Copy(copy, c.datamp)
+	return copy
 }
 
-func (c *ConcurrentMapMutex) IsEmpty() bool {
+func (c *ConcurrentMapMutex[T]) IsEmpty() bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return len(c._map) == 0
+	return len(c.datamp) == 0
 }

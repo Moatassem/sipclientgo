@@ -224,8 +224,10 @@ func serveSession(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var lst []string
-	for _, ses := range sip.Sessions.Range() {
-		lst = append(lst, ses.String())
+	for _, ue := range sip.UEs.GetUEs() {
+		for _, ses := range ue.SesMap.Range() {
+			lst = append(lst, ses.String())
+		}
 	}
 
 	data := struct {
