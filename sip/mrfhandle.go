@@ -49,44 +49,44 @@ func (ss *SipSession) RouteRequestInternal(trans *Transaction, sipmsg1 *SipMessa
 // ============================================================================
 // MRF methods
 
-func (ss *SipSession) buildSDPOffer() {
-	ss.MediaListener = MediaPorts.ReserveSocket()
+// func (ss *SipSession) buildSDPOffer() {
+// 	ss.MediaListener = MediaPorts.ReserveSocket()
 
-	formats := make([]*sdp.Format, 2)
-	formats = append(formats, &sdp.Format{
-		Payload: uint8,
-	})
+// 	formats := make([]*sdp.Format, 2)
+// 	formats = append(formats, &sdp.Format{
+// 		Payload: uint8,
+// 	})
 
-	var newmedia *sdp.Media
-	newmedia = &sdp.Media{
-		Chosen:     true,
-		Type:       "audio",
-		Port:       system.GetUDPortFromConn(ss.MediaListener),
-		Proto:      "RTP/AVP",
-		Format:     []*sdp.Format{audioFormat},
-		Attributes: []*sdp.Attr{{Name: "ptime", Value: "20"}},
-		Mode:       sdp.NegotiateMode(sdp.SendRecv, sdpses.GetEffectiveMediaDirective())}
+// 	var newmedia *sdp.Media
+// 	newmedia = &sdp.Media{
+// 		Chosen:     true,
+// 		Type:       "audio",
+// 		Port:       system.GetUDPortFromConn(ss.MediaListener),
+// 		Proto:      "RTP/AVP",
+// 		Format:     []*sdp.Format{audioFormat},
+// 		Attributes: []*sdp.Attr{{Name: "ptime", Value: "20"}},
+// 		Mode:       sdp.NegotiateMode(sdp.SendRecv, sdpses.GetEffectiveMediaDirective())}
 
-	mySDP := &sdp.Session{
-		Origin: &sdp.Origin{
-			Username:       "mt",
-			SessionID:      ss.SDPSessionID,
-			SessionVersion: ss.SDPSessionVersion,
-			Network:        sdp.NetworkInternet,
-			Type:           sdp.TypeIPv4,
-			Address:        ClientIPv4.String(),
-		},
-		Name: "sipclient",
-		Connection: &sdp.Connection{
-			Network: sdp.NetworkInternet,
-			Type:    sdp.TypeIPv4,
-			Address: ClientIPv4.String(),
-			TTL:     0,
-		},
-		Media: newmedia,
-	}
+// 	mySDP := &sdp.Session{
+// 		Origin: &sdp.Origin{
+// 			Username:       "mt",
+// 			SessionID:      ss.SDPSessionID,
+// 			SessionVersion: ss.SDPSessionVersion,
+// 			Network:        sdp.NetworkInternet,
+// 			Type:           sdp.TypeIPv4,
+// 			Address:        ClientIPv4.String(),
+// 		},
+// 		Name: "sipclient",
+// 		Connection: &sdp.Connection{
+// 			Network: sdp.NetworkInternet,
+// 			Type:    sdp.TypeIPv4,
+// 			Address: ClientIPv4.String(),
+// 			TTL:     0,
+// 		},
+// 		Media: newmedia,
+// 	}
 
-}
+// }
 
 func (ss *SipSession) buildSDPAnswer(sipmsg *SipMessage) (sipcode, q850code int, warn string) {
 	sdpbytes, _ := sipmsg.GetBodyPart(SDP)
