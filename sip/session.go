@@ -104,7 +104,7 @@ func NewSIPSession(sipmsg *SipMessage) *SipSession { //used in inbound sessions
 	return ss
 }
 func (session *SipSession) String() string {
-	return fmt.Sprintf("Call-ID: %s, State: %s, Direction: %s, Mode: %s", session.CallID, session.state.String(), session.Direction.String(), session.Mode)
+	return fmt.Sprintf("UE: %d, Call-ID: %s, State: %s, Direction: %s, Mode: %s", session.UserEquipment.UdpPort, session.CallID, session.state.String(), session.Direction.String(), session.Mode)
 }
 
 //============================================================
@@ -185,6 +185,7 @@ func (session *SipSession) AddIncomingRequest(requestMsg *SipMessage, lt *Transa
 			return reInviteST
 		}
 		log.Printf("Received ACK with improper Via-Branch for %v – Call-ID [%s]", reInviteST.RequestMessage.StartLine.Method.String(), requestMsg.CallID)
+		log.Printf("Existing Via-Branch: %s, Incoming Via-Branch: %s", reInviteST.ViaBranch, requestMsg.ViaBranch)
 		return nil
 	case CANCEL:
 		inviteST := session.GetReOrInviteTransaction(requestMsg.CSeqNum, false)
@@ -1168,7 +1169,7 @@ func (session *SipSession) DropMe() {
 	session.multiUseMutex.Lock()
 	defer session.multiUseMutex.Unlock()
 	if session.IsDisposed {
-		fmt.Print("Already Disposed Session: ", session.CallID, " State: ", session.state.String())
+		fmt.Print("Already Disposed - UEPort:", session.UserEquipment.UdpPort, "Session:", session.CallID, "State:", session.state.String())
 		pc, f, l, ok := runtime.Caller(1) // pc, _, _, ok := runtime.Caller(1)
 		details := runtime.FuncForPC(pc)
 		if ok && details != nil { // f, l := details.FileLine(pc)
@@ -1177,7 +1178,7 @@ func (session *SipSession) DropMe() {
 		return
 	}
 	session.IsDisposed = true
-	fmt.Println("Session:", session.CallID, "State:", session.state.String())
+	fmt.Println("Disposed - UEPort:", session.UserEquipment.UdpPort, "Session:", session.CallID, "State:", session.state.String())
 	MediaPorts.ReleaseSocket(session.MediaListener)
 	close(session.maxDprobDoneChan)
 	close(session.rtpChan)

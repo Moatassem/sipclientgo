@@ -416,7 +416,6 @@ func sipStack(sipmsg *SipMessage, ss *SipSession, newSesType NewSessionType) {
 		}
 		switch method := sipmsg.GetMethod(); method {
 		case INVITE:
-			system.LogInfo(system.LTSystem, fmt.Sprintf("Message: %s, RURI: %s, CallID: %s, Direction: %s", method.String(), sipmsg.StartLine.RUri, ss.CallID, ss.Direction.String()))
 			ss.SendResponse(trans, status.Trying, EmptyBody())
 			ss.RouteRequestInternal(trans, sipmsg)
 		case ReINVITE:
@@ -448,7 +447,6 @@ func sipStack(sipmsg *SipMessage, ss *SipSession, newSesType NewSessionType) {
 				ss.StartMaxCallDuration()
 				ss.StartInDialogueProbing()
 				go ss.mediaReceiver()
-				// go ss.startRTPStreaming("MaythekeshAleha", false, false, false)
 			} else { //ReINVITE
 				if trans.IsFinalResponsePositiveSYNC() {
 					ss.ChecknSetDialogueChanging(false)
