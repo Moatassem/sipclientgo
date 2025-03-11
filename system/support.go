@@ -632,6 +632,14 @@ func RemoveAt(slice []int, i int) []int {
 	return slice[:len(slice)-1]    // Trim the last element
 }
 
+func Reverse[T any](s []T) []T {
+	out := make([]T, len(s))
+	for i := len(s) - 1; i >= 0; i-- {
+		out = append(out, s[i])
+	}
+	return out
+}
+
 // ===================================================================
 
 func StringToHexString(input string) string {

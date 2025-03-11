@@ -773,7 +773,11 @@ func (session *SipSession) PrepareRequestHeaders(trans *Transaction, rqstpk Requ
 		sipmsg.MaxFwds = maxFwds
 	}
 
-	hdrs.AddHeaderValues(Route, session.RecordRoutes)
+	if session.Direction == OUTBOUND {
+		hdrs.AddHeaderValues(Route, system.Reverse(session.RecordRoutes))
+	} else {
+		hdrs.AddHeaderValues(Route, session.RecordRoutes)
+	}
 
 	// Add Contact, Call-ID, and Via headers
 	hdrs.SetHeader(Contact, system.GenerateContact(localsocket))

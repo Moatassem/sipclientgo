@@ -522,7 +522,7 @@ var (
 		X_BusLayBehavior:              "X-BusLayBehavior",
 	}
 
-	ResponseHeaderCHs  = []string{"Via", "From", "To", "Call-ID", "CSeq", "Contact", "Date", "Record-Route", "Server", "Content-Length", "Accept"}
+	ResponseHeaderCHs  = []string{"Record-Route", "Via", "From", "To", "Call-ID", "CSeq", "Contact", "Date", "Server", "Content-Length", "Accept"}
 	DicResponseHeaders = make(map[int][]string)
 )
 
