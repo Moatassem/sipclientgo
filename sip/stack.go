@@ -150,7 +150,9 @@ func processPDU(payload []byte) (*SipMessage, []byte, error) {
 			case Via.LowerCaseString():
 				via := DicFieldRegEx[ViaBranchPattern].FindStringSubmatch(value)
 				if via != nil {
-					sipmsg.ViaBranch = via[1]
+					if sipmsg.ViaBranch == "" {
+						sipmsg.ViaBranch = via[1]
+					}
 					if !strings.HasPrefix(via[1], MagicCookie) {
 						system.LogWarning(system.LTSIPStack, fmt.Sprintf("Received message [%v] having non-RFC3261 Via branch [%v]", startLine.Method.String(), via[1]))
 						fmt.Println(string(payload[:_dblCrLfIdx]))
