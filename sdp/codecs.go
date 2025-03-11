@@ -17,22 +17,22 @@ const (
 
 const (
 	PCMU uint8 = 0
-	GSM        = 3
-	G723       = 4
-	DVI4       = 5
+	GSM  uint8 = 3
+	G723 uint8 = 4
+	DVI4 uint8 = 5
 	// DVI4   = 6
-	LPC   = 7
-	PCMA  = 8
-	G722  = 9
-	L16   = 11
-	QCELP = 12
-	CN    = 13
-	MPA   = 14
-	G728  = 15
+	LPC   uint8 = 7
+	PCMA  uint8 = 8
+	G722  uint8 = 9
+	L16   uint8 = 11
+	QCELP uint8 = 12
+	CN    uint8 = 13
+	MPA   uint8 = 14
+	G728  uint8 = 15
 	// DVI4   = 16
 	// DVI4   = 17
-	G729            = 18
-	telephone_event = 101
+	G729            uint8 = 18
+	telephone_event uint8 = 101
 
 //	0,PCMU,8000,1
 //

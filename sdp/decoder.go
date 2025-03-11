@@ -284,7 +284,7 @@ func (d *Decoder) connection(v string) (*Connection, error) {
 	}
 	c := new(Connection)
 	c.Network, c.Type, c.Address = p[0], p[1], p[2]
-	p, ok = d.split(c.Address, '/', 3)
+	p, _ = d.split(c.Address, '/', 3)
 	switch c.Type {
 	case TypeIPv4:
 		if len(p) > 2 {

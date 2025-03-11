@@ -127,6 +127,10 @@ func (headers *SipHeaders) AddHeaderValues(headerName string, headerValues []str
 	}
 }
 
+func (headers *SipHeaders) AddHeaderNameValues(header global.HeaderEnum, headerValues []string) {
+	headers.AddHeaderValues(header.String(), headerValues)
+}
+
 func (headers *SipHeaders) SetHeader(header global.HeaderEnum, headerValue string) {
 	headers.Set(header.String(), headerValue)
 }
@@ -138,6 +142,11 @@ func (headers *SipHeaders) Set(headerName string, headerValue string) {
 
 func (headers *SipHeaders) ValuesHeader(header global.HeaderEnum) (bool, []string) {
 	return headers.Values(header.String())
+}
+
+func (headers *SipHeaders) HeaderNameValues(header global.HeaderEnum) []string {
+	_, values := headers.Values(header.String())
+	return values
 }
 
 func (headers *SipHeaders) Values(headerName string) (bool, []string) {

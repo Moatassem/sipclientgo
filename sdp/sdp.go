@@ -8,6 +8,37 @@ import (
 // ContentType is the media type for an SDP session description.
 const ContentType = "application/sdp"
 
+var mapCodecs map[uint8]string
+
+func init() {
+	mapCodecs = map[uint8]string{
+		0:   "PCMU",
+		3:   "GSM",
+		4:   "G723",
+		5:   "DVI4",
+		6:   "DVI4",
+		7:   "LPC",
+		8:   "PCMA",
+		9:   "G722",
+		10:  "L16",
+		11:  "L16",
+		12:  "QCELP",
+		13:  "CN",
+		14:  "MPA",
+		15:  "G728",
+		16:  "DVI4",
+		17:  "DVI4",
+		18:  "G729",
+		25:  "CelB",
+		26:  "JPEG",
+		31:  "H261",
+		32:  "MPV",
+		33:  "MP2T",
+		34:  "H263",
+		101: "telephone-event",
+	}
+}
+
 // Session represents an SDP session description.
 type Session struct {
 	Version     int          // Protocol Version ("v=")
@@ -38,6 +69,52 @@ func (s *Session) Bytes() []byte {
 	e := NewEncoder(nil)
 	e.Encode(s)
 	return e.Bytes()
+}
+
+func NewSessionSDP(sesID, sesVer int64, ipv4, nm, ssrc, mdir string, port int, codecs ...uint8) *Session {
+	formats := make([]*Format, 0, len(codecs))
+	for codec := range codecs {
+		formats = append(formats, getFormat(uint8(codec)))
+	}
+
+	return &Session{
+		Version: 0,
+		Origin: &Origin{
+			Username:       "-",
+			SessionID:      sesID,
+			SessionVersion: sesVer,
+			Network:        NetworkInternet,
+			Type:           TypeIPv4,
+			Address:        ipv4,
+		},
+		Name: nm,
+		Connection: &Connection{
+			Network: NetworkInternet,
+			Type:    TypeIPv4,
+			Address: ipv4,
+		},
+		Media: []*Media{
+			{
+				Chosen:     true,
+				Type:       Audio,
+				Port:       port,
+				Proto:      RtpAvp,
+				Attributes: Attributes{{Name: "ssrc", Value: ssrc}},
+				Mode:       mdir,
+				Format:     formats,
+			},
+		},
+	}
+
+}
+
+func getFormat(codec uint8) *Format {
+	return &Format{
+		Payload:   codec,
+		Name:      mapCodecs[codec],
+		ClockRate: 8000,
+		Channels:  1,
+	}
 }
 
 // Get Chosen Media Description

@@ -517,11 +517,11 @@ func (session *SipSession) CreateHeadersForResponse(trans *Transaction, rspnspk 
 	}
 
 	// Add mandatory headers
-	hdrs.AddHeader(Via, sipmsg.Headers.ValueHeader(Via))
+	hdrs.AddHeaderNameValues(Via, sipmsg.Headers.HeaderNameValues(Via))
 	hdrs.AddHeader(From, sipmsg.Headers.ValueHeader(From))
 	hdrs.AddHeader(To, sipmsg.Headers.ValueHeader(To))
 	hdrs.AddHeader(CSeq, sipmsg.Headers.ValueHeader(CSeq))
-	hdrs.AddHeader(Record_Route, sipmsg.Headers.ValueHeader(Record_Route))
+	hdrs.AddHeaderNameValues(Record_Route, sipmsg.Headers.HeaderNameValues(Record_Route))
 	hdrs.AddHeader(Date, time.Now().UTC().Format(DicTFs[Signaling]))
 	hdrs.AddHeader(Refer_Sub, sipmsg.Headers.ValueHeader(Refer_Sub))
 
