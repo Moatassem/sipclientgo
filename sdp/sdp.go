@@ -5,11 +5,6 @@ import (
 	"time"
 )
 
-// ContentType is the media type for an SDP session description.
-const ContentType = "application/sdp"
-
-var mapCodecs map[uint8]string
-
 func init() {
 	mapCodecs = map[uint8]string{
 		0:   "PCMU",
@@ -109,12 +104,16 @@ func NewSessionSDP(sesID, sesVer int64, ipv4, nm, ssrc, mdir string, port int, c
 }
 
 func getFormat(codec uint8) *Format {
-	return &Format{
+	frmt := &Format{
 		Payload:   codec,
 		Name:      mapCodecs[codec],
 		ClockRate: 8000,
 		Channels:  1,
 	}
+	if codec == telephone_event {
+		frmt.Params = append(frmt.Params, "0-16")
+	}
+	return frmt
 }
 
 // Get Chosen Media Description

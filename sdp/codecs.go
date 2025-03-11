@@ -9,9 +9,11 @@ type Codec struct {
 
 var (
 	SupportedCodecs = []uint8{PCMA, PCMU, G722, G729}
+	mapCodecs       map[uint8]string
 )
 
 const (
+	ContentType     = "application/sdp"
 	TelephoneEvents = "telephone-event"
 )
 

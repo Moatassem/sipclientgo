@@ -18,7 +18,7 @@ func NewSipHeaders() SipHeaders {
 func NewSHsFromMap(mp map[string][]string) SipHeaders {
 	headers := NewSipHeaders()
 	for k, v := range mp {
-		headers.AddHeaderValues(k, v)
+		headers.AddValues(k, v)
 	}
 	return headers
 }
@@ -117,7 +117,7 @@ func (headers *SipHeaders) Add(headerName string, headerValue string) {
 	}
 }
 
-func (headers *SipHeaders) AddHeaderValues(headerName string, headerValues []string) {
+func (headers *SipHeaders) AddValues(headerName string, headerValues []string) {
 	headerName = system.ASCIIToLower(headerName)
 	v, ok := headers._map[headerName]
 	if ok {
@@ -127,8 +127,8 @@ func (headers *SipHeaders) AddHeaderValues(headerName string, headerValues []str
 	}
 }
 
-func (headers *SipHeaders) AddHeaderNameValues(header global.HeaderEnum, headerValues []string) {
-	headers.AddHeaderValues(header.String(), headerValues)
+func (headers *SipHeaders) AddHeaderValues(header global.HeaderEnum, headerValues []string) {
+	headers.AddValues(header.String(), headerValues)
 }
 
 func (headers *SipHeaders) SetHeader(header global.HeaderEnum, headerValue string) {
@@ -144,7 +144,7 @@ func (headers *SipHeaders) ValuesHeader(header global.HeaderEnum) (bool, []strin
 	return headers.Values(header.String())
 }
 
-func (headers *SipHeaders) HeaderNameValues(header global.HeaderEnum) []string {
+func (headers *SipHeaders) HeaderValues(header global.HeaderEnum) []string {
 	_, values := headers.Values(header.String())
 	return values
 }

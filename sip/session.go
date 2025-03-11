@@ -29,7 +29,9 @@ type SipSession struct {
 	ToTag            string
 	RemoteContactURI string
 	RecordRouteURI   string
-	MRFRepo          *MRFRepo
+	RecordRoutes     []string
+
+	MRFRepo *MRFRepo
 
 	Mode mode.SessionMode
 
@@ -101,6 +103,7 @@ func NewSS(dir Direction) *SipSession {
 func NewSIPSession(sipmsg *SipMessage) *SipSession { //used in inbound sessions
 	ss := NewSS(INBOUND)
 	ss.CallID = sipmsg.CallID
+	ss.RecordRoutes = sipmsg.Headers.HeaderValues(Record_Route)
 	return ss
 }
 func (session *SipSession) String() string {
@@ -517,13 +520,11 @@ func (session *SipSession) CreateHeadersForResponse(trans *Transaction, rspnspk 
 	}
 
 	// Add mandatory headers
-	hdrs.AddHeaderNameValues(Via, sipmsg.Headers.HeaderNameValues(Via))
+	hdrs.AddHeaderValues(Via, sipmsg.Headers.HeaderValues(Via))
 	hdrs.AddHeader(From, sipmsg.Headers.ValueHeader(From))
 	hdrs.AddHeader(To, sipmsg.Headers.ValueHeader(To))
 	hdrs.AddHeader(CSeq, sipmsg.Headers.ValueHeader(CSeq))
-	hdrs.AddHeaderNameValues(Record_Route, sipmsg.Headers.HeaderNameValues(Record_Route))
 	hdrs.AddHeader(Date, time.Now().UTC().Format(DicTFs[Signaling]))
-	hdrs.AddHeader(Refer_Sub, sipmsg.Headers.ValueHeader(Refer_Sub))
 
 	// Handle Reason header if session is linked and response code >= 400
 	// if !rspnspk.IsCancelled && session.LinkedSession != nil && sc >= 400 && !hdrs.HeaderExists("Reason") {
@@ -544,7 +545,9 @@ func (session *SipSession) CreateHeadersForResponse(trans *Transaction, rspnspk 
 			hdrs.SetHeader(To, session.ToHeader)
 			trans.To = session.ToHeader
 		}
-		hdrs.AddHeader(Record_Route, sipmsg.Headers.ValueHeader(Record_Route))
+
+		hdrs.AddHeader(Refer_Sub, sipmsg.Headers.ValueHeader(Refer_Sub))
+		hdrs.AddHeaderValues(Record_Route, session.RecordRoutes)
 
 		// remoteses := session.LinkedSession
 		// prackRequested := remoteses != nil && remoteses.AreTherePendingOutgoingPRACK()
@@ -769,6 +772,8 @@ func (session *SipSession) PrepareRequestHeaders(trans *Transaction, rqstpk Requ
 	if rqstpk.Method == ReINVITE {
 		sipmsg.MaxFwds = maxFwds
 	}
+
+	hdrs.AddHeaderValues(Route, session.RecordRoutes)
 
 	// Add Contact, Call-ID, and Via headers
 	hdrs.SetHeader(Contact, system.GenerateContact(localsocket))
