@@ -103,9 +103,9 @@ func NewSS(dir Direction) *SipSession {
 func NewSIPSession(sipmsg *SipMessage) *SipSession { //used in inbound sessions
 	ss := NewSS(INBOUND)
 	ss.CallID = sipmsg.CallID
-	ss.RecordRoutes = sipmsg.Headers.HeaderValues(Record_Route)
 	return ss
 }
+
 func (session *SipSession) String() string {
 	return fmt.Sprintf("UE: %d, Call-ID: %s, State: %s, Direction: %s, Mode: %s", session.UserEquipment.UdpPort, session.CallID, session.state.String(), session.Direction.String(), session.Mode)
 }
@@ -900,6 +900,11 @@ func (session *SipSession) CurrentRequestMessage() *SipMessage {
 }
 
 func (session *SipSession) UpdateContactRecordRouteBody(sipmsg *SipMessage) {
+	rcrdrts := sipmsg.Headers.HeaderValues(Record_Route)
+	if len(rcrdrts) > 0 {
+		session.RecordRoutes = rcrdrts
+	}
+
 	if sipmsg.IsResponse() {
 		return
 	}
