@@ -774,9 +774,9 @@ func (session *SipSession) PrepareRequestHeaders(trans *Transaction, rqstpk Requ
 	}
 
 	if session.Direction == INBOUND {
-		hdrs.AddHeaderValues(Route, system.Reverse(session.RecordRoutes))
-	} else {
 		hdrs.AddHeaderValues(Route, session.RecordRoutes)
+	} else {
+		hdrs.AddHeaderValues(Route, system.Reverse(session.RecordRoutes))
 	}
 
 	// Add Contact, Call-ID, and Via headers
