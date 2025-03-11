@@ -773,7 +773,7 @@ func (session *SipSession) PrepareRequestHeaders(trans *Transaction, rqstpk Requ
 		sipmsg.MaxFwds = maxFwds
 	}
 
-	if session.Direction == OUTBOUND {
+	if session.Direction == INBOUND {
 		hdrs.AddHeaderValues(Route, system.Reverse(session.RecordRoutes))
 	} else {
 		hdrs.AddHeaderValues(Route, session.RecordRoutes)
