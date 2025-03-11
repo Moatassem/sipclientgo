@@ -66,7 +66,7 @@ func (s *Session) Bytes() []byte {
 	return e.Bytes()
 }
 
-func NewSessionSDP(sesID, sesVer int64, ipv4, nm, ssrc, mdir string, port int, codecs ...uint8) *Session {
+func NewSessionSDP(sesID, sesVer int64, ipv4, nm, ssrc, mdir string, port int, codecs []uint8) *Session {
 	formats := make([]*Format, 0, len(codecs))
 	for codec := range codecs {
 		formats = append(formats, getFormat(uint8(codec)))
@@ -110,7 +110,7 @@ func getFormat(codec uint8) *Format {
 		ClockRate: 8000,
 		Channels:  1,
 	}
-	if codec == telephone_event {
+	if codec == Telephone_Event {
 		frmt.Params = append(frmt.Params, "0-16")
 	}
 	return frmt

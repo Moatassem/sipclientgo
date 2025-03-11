@@ -11,6 +11,7 @@ import (
 	"sipclientgo/system"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func processPDU(payload []byte) (*SipMessage, []byte, error) {
@@ -525,6 +526,11 @@ func sipStack(sipmsg *SipMessage, ss *SipSession, newSesType NewSessionType) {
 		case stsCode <= 199:
 		case stsCode <= 299:
 			switch trans.Method {
+			case INVITE:
+				ss.FinalizeState()
+				ss.SendRequest(ACK, trans, EmptyBody())
+				<-time.After(5 * time.Second)
+				ss.ReleaseMe("Drop call")
 			case REGISTER:
 				ss.FinalizeState()
 				ss.logRegData(sipmsg)

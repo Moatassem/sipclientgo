@@ -34,7 +34,7 @@ const (
 	// DVI4   = 16
 	// DVI4   = 17
 	G729            uint8 = 18
-	telephone_event uint8 = 101
+	Telephone_Event uint8 = 101
 
 //	0,PCMU,8000,1
 //

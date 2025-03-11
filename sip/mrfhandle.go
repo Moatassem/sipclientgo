@@ -28,20 +28,19 @@ func (ss *SipSession) RouteRequestInternal(trans *Transaction, sipmsg1 *SipMessa
 		}
 	}()
 
-	upart := sipmsg1.StartLine.UserPart
-
 	if !sipmsg1.Body.ContainsSDP() {
 		ss.RejectMe(trans, status.NotAcceptableHere, q850.BearerCapabilityNotImplemented, "Not supported SDP or delayed offer")
 		return
 	}
 
-	repo, ok := MRFRepos.GetMRFRepo(upart)
-	if !ok {
-		ss.RejectMe(trans, status.NotFound, q850.UnallocatedNumber, "MRF Repository not found")
-		return
-	}
+	// upart := sipmsg1.StartLine.UserPart
+	// repo, ok := MRFRepos.GetMRFRepo(upart)
+	// if !ok {
+	// 	ss.RejectMe(trans, status.NotFound, q850.UnallocatedNumber, "MRF Repository not found")
+	// 	return
+	// }
 
-	ss.MRFRepo = repo
+	// ss.MRFRepo = repo
 
 	ss.answerMRF(trans, sipmsg1)
 }
@@ -52,8 +51,10 @@ func (ss *SipSession) RouteRequestInternal(trans *Transaction, sipmsg1 *SipMessa
 func (ss *SipSession) buildSDPOffer() {
 	ss.MediaListener = MediaPorts.ReserveSocket()
 
-	// sdpSes:= sdp.NewSessionSDP(sesID int64, sesVer int64, ipv4 string, nm string, ssrc string, mdir string, port int, codecs ...uint8)
+	ss.initMediaParameters()
+	mySDP := sdp.NewSessionSDP(ss.SDPSessionID, ss.SDPSessionVersion, ClientIPv4.String(), B2BUAName, system.Uint32ToStr(ss.rtpSSRC), sdp.SendRecv, system.GetUDPortFromConn(ss.MediaListener), []uint8{sdp.G722, sdp.PCMA, sdp.PCMU, sdp.Telephone_Event})
 
+	ss.LocalSDP = mySDP
 }
 
 func (ss *SipSession) buildSDPAnswer(sipmsg *SipMessage) (sipcode, q850code int, warn string) {
@@ -74,15 +75,15 @@ func (ss *SipSession) buildSDPAnswer(sipmsg *SipMessage) (sipcode, q850code int,
 		if media.Type != sdp.Audio || media.Port == 0 || media.Proto != sdp.RtpAvp || (conn == nil && len(media.Connection) == 0) { //|| media.Mode != sdp.SendRecv
 			continue
 		}
-		for j := 0; j < len(media.Connection); j++ {
-			connection := media.Connection[j]
+		for k := range media.Connection {
+			connection := media.Connection[k]
 			if connection.Type != sdp.TypeIPv4 || connection.Network != sdp.NetworkInternet { //connection.Address == "0.0.0.0"
 				continue
 			}
 			conn = connection
 			break
 		}
-		for k := 0; k < len(media.Format); k++ {
+		for k := range media.Format {
 			frmt := media.Format[k]
 			if frmt.Channels != 1 || frmt.ClockRate != 8000 || !slices.Contains(sdp.SupportedCodecs, frmt.Payload) {
 				continue
@@ -90,7 +91,7 @@ func (ss *SipSession) buildSDPAnswer(sipmsg *SipMessage) (sipcode, q850code int,
 			audioFormat = frmt
 			break
 		}
-		for k := 0; k < len(media.Format); k++ {
+		for k := range media.Format {
 			frmt := media.Format[k]
 			if frmt.Name == sdp.TelephoneEvents {
 				dtmfFormat = frmt
@@ -141,7 +142,7 @@ func (ss *SipSession) buildSDPAnswer(sipmsg *SipMessage) (sipcode, q850code int,
 	ss.IsCallHeld = sdpses.IsCallHeld()
 
 	// TODO need to handle CANCEL (put some delay before answering?)
-	if ss.MediaListener == nil {
+	if ss.MediaListener == nil { // to avoid memory leak because this method will be called with INVITE/ReINVITE/UPDATE
 		ss.MediaListener = MediaPorts.ReserveSocket()
 	}
 	if ss.MediaListener == nil {
@@ -231,18 +232,21 @@ func (ss *SipSession) buildSDPAnswer(sipmsg *SipMessage) (sipcode, q850code int,
 	return
 }
 
+func (ss *SipSession) initMediaParameters() {
+	ss.rtpSSRC = system.RandomNum(2000, 9000000)
+	ss.rtpSequenceNum = uint16(system.RandomNum(1000, 2000))
+	ss.rtpTimeStmp = 0
+	ss.SDPSessionID = int64(system.RandomNum(1000, 9000))
+	ss.SDPSessionVersion = 1
+}
+
 func (ss *SipSession) answerMRF(trans *Transaction, sipmsg *SipMessage) {
 	if sc, qc, wr := ss.buildSDPAnswer(sipmsg); sc != 0 {
 		ss.RejectMe(trans, sc, qc, wr)
 		return
 	}
 
-	// initializations
-	ss.rtpSSRC = system.RandomNum(2000, 9000000)
-	ss.rtpSequenceNum = uint16(system.RandomNum(1000, 2000))
-	ss.rtpTimeStmp = 0
-	ss.SDPSessionID = int64(system.RandomNum(1000, 9000))
-	ss.SDPSessionVersion = 1
+	ss.initMediaParameters()
 
 	ss.SendResponse(trans, status.Ringing, EmptyBody())
 
@@ -661,7 +665,9 @@ func CallViaUE(ue *UserEquipment, cdpn string) {
 
 	hdrs.AddHeader(Authorization, ue.Authorization)
 
-	trans := ss.CreateSARequest(RequestPack{Method: INVITE, Max70: true, RUriUP: cdpn, FromUP: ue.MsIsdn, CustomHeaders: hdrs}, EmptyBody())
+	ss.buildSDPOffer()
+
+	trans := ss.CreateSARequest(RequestPack{Method: INVITE, Max70: true, RUriUP: cdpn, FromUP: ue.MsIsdn, CustomHeaders: hdrs}, NewMessageSDPBody(ss.LocalSDP.Bytes()))
 
 	ss.SetState(state.BeingEstablished)
 	ss.AddMe()
