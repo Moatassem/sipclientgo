@@ -548,8 +548,8 @@ func (session *SipSession) CreateHeadersForResponse(trans *Transaction, rspnspk 
 
 		hdrs.AddHeader(Refer_Sub, sipmsg.Headers.ValueHeader(Refer_Sub))
 
-		hdrs.AddHeaderValues(Record_Route, system.Reverse(session.RecordRoutes))
-		// hdrs.AddHeaderValues(Record_Route, session.RecordRoutes)
+		// hdrs.AddHeaderValues(Record_Route, system.Reverse(session.RecordRoutes))
+		hdrs.AddHeaderValues(Record_Route, session.RecordRoutes)
 
 		// remoteses := session.LinkedSession
 		// prackRequested := remoteses != nil && remoteses.AreTherePendingOutgoingPRACK()
@@ -776,9 +776,9 @@ func (session *SipSession) PrepareRequestHeaders(trans *Transaction, rqstpk Requ
 	}
 
 	if session.Direction == INBOUND {
-		hdrs.AddHeaderValues(Route, system.Reverse(session.RecordRoutes))
-	} else {
 		hdrs.AddHeaderValues(Route, session.RecordRoutes)
+	} else {
+		hdrs.AddHeaderValues(Route, system.Reverse(session.RecordRoutes))
 	}
 
 	// Add Contact, Call-ID, and Via headers
