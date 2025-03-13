@@ -928,11 +928,13 @@ func (session *SipSession) UpdateContactRecordRouteBody(sipmsg *SipMessage) {
 		return true, hv, &net.UDPAddr{IP: ip, Port: prt}
 	}
 
-	ok1, RCURI, _ := parseURI(sipmsg.RCURI, session.RemoteContactURI)
+	ok1, RCURI, RCUDP := parseURI(sipmsg.RCURI, session.RemoteContactURI)
 	// ok2, RRURI, RRUDP := parseURI(sipmsg.RRURI, session.RecordRouteURI)
 	if ok1 {
 		session.RemoteContactURI = RCURI
-		// session.RemoteContactUDP = RCUDP
+		if len(session.RecordRoutes) == 0 {
+			session.RemoteContactUDP = RCUDP
+		}
 	}
 	// if ok2 {
 	// 	session.RecordRouteURI = RRURI
