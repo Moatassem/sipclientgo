@@ -911,10 +911,6 @@ func (session *SipSession) UpdateContactRecordRouteBody(sipmsg *SipMessage) {
 		session.RecordRoutes = rcrdrts
 	}
 
-	// if sipmsg.IsResponse() {
-	// 	return
-	// }
-
 	parseURI := func(hv string, uri string) (bool, string, *net.UDPAddr) {
 		if hv == uri {
 			return false, hv, nil
@@ -936,7 +932,7 @@ func (session *SipSession) UpdateContactRecordRouteBody(sipmsg *SipMessage) {
 	// ok2, RRURI, RRUDP := parseURI(sipmsg.RRURI, session.RecordRouteURI)
 	if ok1 {
 		session.RemoteContactURI = RCURI
-		//session.RemoteContactUDP = RCUDP
+		// session.RemoteContactUDP = RCUDP
 	}
 	// if ok2 {
 	// 	session.RecordRouteURI = RRURI
