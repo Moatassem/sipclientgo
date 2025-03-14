@@ -450,6 +450,9 @@ func sipStack(sipmsg *SipMessage, ss *SipSession, newSesType NewSessionType) {
 				ss.StartMaxCallDuration()
 				ss.StartInDialogueProbing()
 				go ss.mediaReceiver()
+
+				<-time.After(5 * time.Second)
+				ss.ReleaseMe("Drop call")
 			} else { //ReINVITE
 				if trans.IsFinalResponsePositiveSYNC() {
 					ss.ChecknSetDialogueChanging(false)
@@ -529,8 +532,8 @@ func sipStack(sipmsg *SipMessage, ss *SipSession, newSesType NewSessionType) {
 			case INVITE:
 				ss.FinalizeState()
 				ss.SendRequest(ACK, trans, EmptyBody())
-				<-time.After(5 * time.Second)
-				ss.ReleaseMe("Drop call")
+				// <-time.After(5 * time.Second)
+				// ss.ReleaseMe("Drop call")
 			case REGISTER:
 				ss.FinalizeState()
 				ss.logRegData(sipmsg)
