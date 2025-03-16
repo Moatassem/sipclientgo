@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"sipclientgo/global"
+	"sipclientgo/sip/mode"
 	"sipclientgo/system"
 	"sync"
 )
@@ -125,4 +126,36 @@ func (ues *UserEquipments) DoCall(imsi, cdpn string) error {
 	}
 	go CallViaUE(ue, cdpn)
 	return nil
+}
+
+func (ues *UserEquipments) DoCallAction(imsi, callID, action string) error {
+	ues.mu.RLock()
+	defer ues.mu.RUnlock()
+	if imsi == "" {
+		return fmt.Errorf("invalid IMSI")
+	}
+	ue, ok := ues.eqs[imsi]
+	if !ok {
+		return fmt.Errorf("UE not found")
+	}
+	if callID == "" {
+		return fmt.Errorf("invalid Call-ID")
+	}
+	go CallAction(ue, callID, action)
+	return nil
+}
+
+func (ues *UserEquipments) GetCalls() []sessData {
+	ues.mu.RLock()
+	defer ues.mu.RUnlock()
+	var calls []sessData
+	for _, v := range ues.eqs {
+		for _, ses := range v.SesMap.datamp {
+			if ses.Mode != mode.Multimedia {
+				continue
+			}
+			calls = append(calls, ses.getSessData(nil, nil))
+		}
+	}
+	return calls
 }

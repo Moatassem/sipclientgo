@@ -2,6 +2,7 @@ package sip
 
 import (
 	"sipclientgo/global"
+	"sipclientgo/sdp"
 )
 
 type MessageBody struct {
@@ -26,7 +27,8 @@ func NewMessageBody(init bool) *MessageBody {
 	return new(MessageBody)
 }
 
-func NewMessageSDPBody(sdpbytes []byte) MessageBody {
+func NewMessageSDPBody(sdpSes *sdp.Session) MessageBody {
+	sdpbytes := sdpSes.Bytes()
 	// mb := MessageBody{PartsContents: make(map[BodyType]ContentPart)}
 	// mb.PartsContents[SDP] = ContentPart{Bytes: sdpbytes}
 	// return mb

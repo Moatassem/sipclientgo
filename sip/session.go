@@ -35,6 +35,10 @@ type SipSession struct {
 
 	Mode mode.SessionMode
 
+	StartTime  time.Time
+	EndTime    time.Time
+	AnswerChan chan any
+
 	dcmutex          sync.RWMutex
 	dialogueChanging bool
 
@@ -57,7 +61,8 @@ type SipSession struct {
 	WithTeleEvents bool
 	NewDTMF        bool
 	audioBytes     []byte
-	IsCallHeld     bool
+	RemoteMedDir   string
+	LocalMedDir    string
 	rtpChan        chan any
 	rtpRFC4733TS   uint32
 	rtpSequenceNum uint16
@@ -95,6 +100,7 @@ func NewSS(dir Direction) *SipSession {
 	ss := &SipSession{
 		Direction:        dir,
 		maxDprobDoneChan: make(chan any),
+		AnswerChan:       make(chan any),
 		rtpChan:          make(chan any),
 	}
 	return ss
@@ -1122,36 +1128,39 @@ func (ss *SipSession) ReleaseMe(details string) bool {
 	if ss.IsEstablished() {
 		ss.SetState(state.BeingCleared)
 		ss.SendRequestDetailed(RequestPack{Method: BYE, Max70: true, CustomHeaders: NewSHQ850OrSIP(0, details, "")}, nil, EmptyBody())
+		ss.logSessData(nil, utcNow())
 		return true
 	}
 	return false
 }
 
 // Cancel outgoing INVITE
-func (session *SipSession) CancelMe(q850 int, details string) bool {
-	if session.Direction != OUTBOUND {
+func (ss *SipSession) CancelMe(q850 int, details string) bool {
+	if ss.Direction != OUTBOUND {
 		return false
 	}
-	if session.IsBeingEstablished() {
-		session.SetState(state.BeingCancelled)
+	if ss.IsBeingEstablished() {
+		ss.SetState(state.BeingCancelled)
 		if q850 == -1 || details == "" {
-			session.SendRequest(CANCEL, nil, EmptyBody())
+			ss.SendRequest(CANCEL, nil, EmptyBody())
 		} else {
-			session.SendRequestDetailed(RequestPack{Method: CANCEL, CustomHeaders: NewSHQ850OrSIP(q850, details, "")}, nil, EmptyBody())
+			ss.SendRequestDetailed(RequestPack{Method: CANCEL, CustomHeaders: NewSHQ850OrSIP(q850, details, "")}, nil, EmptyBody())
 		}
+		ss.logSessData(nil, utcNow())
 		return true
 	}
 	return false
 }
 
 // Reject incoming INVITE
-func (session *SipSession) RejectMe(trans *Transaction, sipCode int, q850Cause int, details string) bool {
-	if session.Direction != INBOUND {
+func (ss *SipSession) RejectMe(trans *Transaction, sipCode int, q850Cause int, details string) bool {
+	if ss.Direction != INBOUND {
 		return false
 	}
-	if session.IsBeingEstablished() {
-		session.SetState(state.BeingFailed)
-		session.SendResponseDetailed(trans, ResponsePack{StatusCode: sipCode, CustomHeaders: NewSHQ850OrSIP(q850Cause, details, "")}, EmptyBody())
+	if ss.IsBeingEstablished() {
+		ss.SetState(state.BeingRejected)
+		ss.SendResponseDetailed(trans, ResponsePack{StatusCode: sipCode, CustomHeaders: NewSHQ850OrSIP(q850Cause, details, "")}, EmptyBody())
+		ss.logSessData(nil, utcNow())
 		return true
 	}
 	return false
@@ -1196,6 +1205,7 @@ func (session *SipSession) DropMe() {
 	fmt.Println("Disposed - UEPort:", session.UserEquipment.UdpPort, "Session:", session.CallID, "State:", session.state.String())
 	MediaPorts.ReleaseSocket(session.MediaListener)
 	close(session.maxDprobDoneChan)
+	close(session.AnswerChan)
 	close(session.rtpChan)
 	session.UserEquipment.SesMap.Delete(session.CallID)
 }

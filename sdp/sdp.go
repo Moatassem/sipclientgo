@@ -371,6 +371,10 @@ func NegotiateMode(local, remote string) string {
 	return Inactive
 }
 
+func IsMedDirHolding(md string) bool {
+	return md == SendOnly || md == Inactive
+}
+
 // DeleteAttr removes all elements with name from attrs.
 func DeleteAttr(attrs Attributes, name ...string) Attributes {
 	n := 0

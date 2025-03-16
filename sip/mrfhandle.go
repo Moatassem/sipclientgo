@@ -48,13 +48,44 @@ func (ss *SipSession) RouteRequestInternal(trans *Transaction, sipmsg1 *SipMessa
 // ============================================================================
 // MRF methods
 
-func (ss *SipSession) buildSDPOffer() {
-	ss.MediaListener = MediaPorts.ReserveSocket()
+func (ss *SipSession) buildSDPOffer(callhold bool) bool {
+	if ss.MediaListener == nil {
+		ss.MediaListener = MediaPorts.ReserveSocket()
+	}
 
-	ss.initMediaParameters()
-	mySDP := sdp.NewSessionSDP(ss.SDPSessionID, ss.SDPSessionVersion, ClientIPv4.String(), B2BUAName, system.Uint32ToStr(ss.rtpSSRC), sdp.SendRecv, system.GetUDPortFromConn(ss.MediaListener), []uint8{sdp.G722, sdp.PCMA, sdp.PCMU, sdp.Telephone_Event})
+	if callhold {
+		switch ss.LocalMedDir {
+		case "", sdp.SendRecv:
+			ss.LocalMedDir = sdp.SendOnly
+		case sdp.RecvOnly:
+			ss.LocalMedDir = sdp.Inactive
+		default:
+			return false
+		}
+	} else {
+		switch ss.LocalMedDir {
+		case sdp.SendOnly:
+			ss.LocalMedDir = sdp.SendRecv
+		case sdp.Inactive:
+			ss.LocalMedDir = sdp.RecvOnly
+		case "":
+			ss.LocalMedDir = sdp.SendRecv
+		default:
+			return false
+		}
+	}
+
+	medDir := ss.LocalMedDir
+
+	mySDP := sdp.NewSessionSDP(ss.SDPSessionID, ss.SDPSessionVersion, ClientIPv4.String(), B2BUAName, system.Uint32ToStr(ss.rtpSSRC), medDir, system.GetUDPortFromConn(ss.MediaListener), []uint8{sdp.G722, sdp.PCMA, sdp.PCMU, sdp.Telephone_Event})
+
+	if ss.LocalSDP != nil && !mySDP.Equals(ss.LocalSDP) {
+		ss.SDPSessionVersion += 1
+		mySDP.Origin.SessionVersion = ss.SDPSessionVersion
+	}
 
 	ss.LocalSDP = mySDP
+	return true
 }
 
 func (ss *SipSession) buildSDPAnswer(sipmsg *SipMessage) (sipcode, q850code int, warn string) {
@@ -139,7 +170,7 @@ func (ss *SipSession) buildSDPAnswer(sipmsg *SipMessage) (sipcode, q850code int,
 	}
 
 	ss.RemoteMedia = rmedia
-	ss.IsCallHeld = sdpses.IsCallHeld()
+	ss.RemoteMedDir = sdpses.GetEffectiveMediaDirective()
 
 	// TODO need to handle CANCEL (put some delay before answering?)
 	if ss.MediaListener == nil { // to avoid memory leak because this method will be called with INVITE/ReINVITE/UPDATE
@@ -195,6 +226,8 @@ func (ss *SipSession) buildSDPAnswer(sipmsg *SipMessage) (sipcode, q850code int,
 		// },
 	}
 
+	ss.LocalMedDir = sdp.NegotiateMode(sdp.SendRecv, ss.RemoteMedDir)
+
 	for i := range sdpses.Media {
 		media := sdpses.Media[i]
 		var newmedia *sdp.Media
@@ -203,10 +236,10 @@ func (ss *SipSession) buildSDPAnswer(sipmsg *SipMessage) (sipcode, q850code int,
 				Chosen:     true,
 				Type:       "audio",
 				Port:       system.GetUDPortFromConn(ss.MediaListener),
-				Proto:      "RTP/AVP",
+				Proto:      media.Proto,
 				Format:     []*sdp.Format{audioFormat},
 				Attributes: []*sdp.Attr{{Name: "ptime", Value: "20"}},
-				Mode:       sdp.NegotiateMode(sdp.SendRecv, sdpses.GetEffectiveMediaDirective())}
+				Mode:       ss.LocalMedDir}
 			if dtmfFormat != nil {
 				newmedia.Format = append(newmedia.Format, dtmfFormat)
 			}
@@ -250,15 +283,13 @@ func (ss *SipSession) answerMRF(trans *Transaction, sipmsg *SipMessage) {
 
 	ss.SendResponse(trans, status.Ringing, EmptyBody())
 
-	<-time.After(AnswerDelay * time.Millisecond)
+	<-ss.AnswerChan
 
 	if !ss.IsBeingEstablished() {
 		return
 	}
 
-	// ss.speechBytes = make([]byte, 0, 2*50*160)
-
-	ss.SendResponse(trans, status.OK, NewMessageSDPBody(ss.LocalSDP.Bytes()))
+	ss.SendResponse(trans, status.OK, NewMessageSDPBody(ss.LocalSDP))
 }
 
 func (ss *SipSession) mediaReceiver() {
@@ -478,7 +509,7 @@ func (ss *SipSession) startRTPStreaming(audiokey string, resetflag, loopflag, dr
 				isFinished = true
 			}
 
-			if !ss.IsCallHeld {
+			if !sdp.IsMedDirHolding(ss.RemoteMedDir) {
 				pktptr := RTPTXBufferPool.Get().(*[]byte)
 				pkt := (*pktptr)[:0]
 				pkt = append(pkt, 128)
@@ -665,13 +696,59 @@ func CallViaUE(ue *UserEquipment, cdpn string) {
 
 	hdrs.AddHeader(Authorization, ue.Authorization)
 
-	ss.buildSDPOffer()
+	ss.initMediaParameters()
+	ss.buildSDPOffer(false)
 
-	trans := ss.CreateSARequest(RequestPack{Method: INVITE, Max70: true, RUriUP: cdpn, FromUP: ue.MsIsdn, CustomHeaders: hdrs}, NewMessageSDPBody(ss.LocalSDP.Bytes()))
+	frm := ue.MsIsdn
+	if frm == "N/A" {
+		frm = ue.Imsi
+	}
+
+	trans := ss.CreateSARequest(RequestPack{Method: INVITE, Max70: true, RUriUP: cdpn, FromUP: frm, CustomHeaders: hdrs}, NewMessageSDPBody(ss.LocalSDP))
 
 	ss.SetState(state.BeingEstablished)
 	ss.AddMe()
+	ss.logSessData(nil, nil)
 	ss.SendSTMessage(trans)
+}
+
+func CallAction(ue *UserEquipment, callID, action string) {
+	ses, ok := ue.SesMap.Load(callID)
+	if !ok {
+		return
+	}
+	const (
+		ResumeAnswer  = "Resume/Answer"
+		RejectRelease = "Reject/Release"
+		HoldCall      = "HoldCall"
+	)
+	switch action {
+	case ResumeAnswer:
+		if ses.Direction == INBOUND && ses.IsBeingEstablished() {
+			ses.AnswerChan <- true
+			return
+		}
+		if ses.IsEstablished() && ses.buildSDPOffer(false) {
+			ses.SendRequest(ReINVITE, nil, NewMessageSDPBody(ses.LocalSDP))
+			ses.logSessData(nil, nil)
+		}
+	case RejectRelease:
+		if ses.ReleaseMe("Call cleared by user") {
+			return
+		}
+		if ses.RejectMe(nil, 480, 16, "Call rejected by user") {
+			return
+		}
+		ses.CancelMe(16, "Call cancelled by user")
+	case HoldCall:
+		if !ses.IsEstablished() {
+			return
+		}
+		if ses.buildSDPOffer(true) {
+			ses.SendRequest(ReINVITE, nil, NewMessageSDPBody(ses.LocalSDP))
+			ses.logSessData(nil, nil)
+		}
+	}
 }
 
 func computeAuthorizationHeader(realm, nonce, method, nonceCount string, ue *UserEquipment) string {
@@ -846,5 +923,68 @@ func (ss *SipSession) logRegData(sipmsg *SipMessage) {
 
 	if WSServer != nil {
 		WSServer.WriteJSON(ue)
+	}
+}
+
+func utcNow() *time.Time {
+	tm := time.Now().UTC()
+	return &tm
+}
+
+type sessData struct {
+	Imsi        string `json:"imsi"`
+	MsIsdn      string `json:"msisdn"`
+	StartTime   string `json:"startTime"`
+	EndTime     string `json:"endTime"`
+	Direction   string `json:"direction"`
+	CallId      string `json:"callID"`
+	State       string `json:"state"`
+	CallHold    bool   `json:"callHold"`
+	FlashAnswer bool   `json:"flashAnswer"`
+}
+
+func (ss *SipSession) getSessData(starttm, endtm *time.Time) sessData {
+	sesstate := ss.GetState()
+
+	sesData := sessData{
+		Imsi:      ss.UserEquipment.Imsi,
+		MsIsdn:    ss.UserEquipment.MsIsdn,
+		Direction: ss.Direction.String(),
+		CallId:    ss.CallID,
+		State:     sesstate.String(),
+		CallHold:  sdp.IsMedDirHolding(ss.LocalMedDir),
+	}
+
+	sesData.FlashAnswer = (ss.Direction == INBOUND && sesstate == state.BeingEstablished)
+
+	if starttm == nil {
+		if ss.StartTime.IsZero() {
+			ss.StartTime = time.Now().UTC()
+		}
+	} else {
+		ss.StartTime = *starttm
+	}
+	sesData.StartTime = ss.StartTime.Format(DicTFs[JsonDateTimeMS])
+
+	if endtm == nil {
+		if ss.EndTime.IsZero() {
+			sesData.EndTime = "N/A"
+		} else {
+			sesData.EndTime = ss.EndTime.Format(DicTFs[JsonDateTimeMS])
+		}
+	} else {
+		if ss.EndTime.IsZero() {
+			ss.EndTime = *endtm
+		}
+		sesData.EndTime = (*endtm).Format(DicTFs[JsonDateTimeMS])
+	}
+
+	return sesData
+}
+
+func (ss *SipSession) logSessData(starttm, endtm *time.Time) {
+	sesData := ss.getSessData(starttm, endtm)
+	if WSServer != nil {
+		WSServer.WriteJSON(sesData)
 	}
 }

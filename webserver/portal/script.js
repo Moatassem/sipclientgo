@@ -1,5 +1,6 @@
 const recordForm = document.getElementById('recordForm');
 const dataTable = document.getElementById('dataTable').getElementsByTagName('tbody')[0];
+const callsTable = document.getElementById('callsTable').getElementsByTagName('tbody')[0];
 const deleteSelected = document.getElementById('deleteSelected');
 const refresh = document.getElementById('refresh');
 const submitButton = recordForm.querySelector('button[type="submit"]');
@@ -7,7 +8,11 @@ const editData = document.getElementById('editData');
 const saveData = document.getElementById('saveData');
 const pcscfSocket = document.getElementById('pcscfSocket');
 const imsDomain = document.getElementById('imsDomain');
+const ringingSound = document.getElementById('ringingSound');
 const ws = new WebSocket(`ws://${location.host}/ws`);
+
+const btnRefreshCalls = document.getElementById('btnRefreshCalls');
+const btnClearCalls = document.getElementById('btnClearCalls');
 
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -81,7 +86,7 @@ saveData.addEventListener('click', async event => {
 
 });
 
-recordForm.addEventListener('submit', async (event) => {
+recordForm.addEventListener('submit', async event => {
     event.preventDefault();
 
     const udpPortValue = parseInt(document.getElementById('udpPort').value, 10);
@@ -162,7 +167,7 @@ function populateTable(data) {
 
         const unRegButton = document.createElement('button');
         unRegButton.classList.add('actions');
-        unRegButton.textContent = '⚡';
+        unRegButton.textContent = '⭕';
         unRegButton.title = 'Unregister';
         unRegButton.addEventListener('click', () => performRegister(newRow, true));
 
@@ -260,7 +265,9 @@ async function performRegister(row, unreg) {
 }
 
 async function performCall(row) {
-    cdpn = prompt(`Enter CDPN to dial from UE (${row.cells[5].textContent})`);
+    let num = row.cells[5].textContent
+    if (isNaN(num)) num = row.cells[2].textContent
+    let cdpn = prompt(`Enter CDPN to dial from UE (${num})`);
     if (!cdpn) return;
     const params = { imsi: row.cells[2].textContent, cdpn: cdpn };
     const queryString = new URLSearchParams(params).toString();
@@ -272,7 +279,107 @@ async function performCall(row) {
     if (!response.ok) alert('Error: ' + response.statusText);
 }
 
+btnRefreshCalls.addEventListener('click', async event => {
+    btnRefreshCalls.disabled = true;
 
+    try {
+        const response = await fetch('/calls', { method: 'GET' });
+        if (!response.ok) {
+            throw new Error('Failed to fetch data');
+        }
+        const data = await response.json();
+        populateCallsTable(data);
+    } catch (error) {
+        alert('Error: ' + error.message);
+        console.error('Error:', error);
+    } finally {
+        btnRefreshCalls.disabled = false;
+    }
+
+});
+
+
+btnClearCalls.addEventListener('click', () => { callsTable.innerHTML = '' });
+
+
+function populateCallsTable(msgs) {
+    callsTable.innerHTML = '';
+    if (msgs) msgs.forEach(msg => populateCallsRecord(msg));
+}
+
+function populateCallsRecord(msg) {
+    let row = Array.from(callsTable.rows).find(row => row.cells[0].textContent === msg.imsi && row.cells[5].textContent === msg.callID);
+
+    if (row) {
+
+        // 0 - <th>IMSI</th>
+        // 1 - <th>MsIsdn</th>
+        // 2 - <th>Start Time</th>
+        // 3 - <th>End Time</th>
+        // 4 - <th>Direction</th>
+        // 5 - <th>Call ID</th>
+        // 6 - <th>State</th>
+        // 7 - <th>Action</th>
+
+        row.cells[2].textContent = msg.startTime;
+        row.cells[3].textContent = msg.endTime;
+        row.cells[6].textContent = msg.state;
+
+        let btnAnswer = row.getElementsByTagName('button')[0];
+        btnAnswer.style.animation = '';
+
+        ringingSound.pause();
+        ringingSound.currentTime = 0;
+
+        let btnHold = row.getElementsByTagName('button')[2];
+        if (msg.callHold) btnHold.style.animation = 'flashButton 1s infinite';
+        else btnHold.style.animation = '';
+
+        if (msg.endTime !== 'N/A') btnHold.style.animation = '';
+
+        ws.send(JSON.stringify({ message: "Call record updated!" }));
+
+        return
+    }
+
+    row = callsTable.insertRow();
+    Object.entries(msg).forEach(([key, value]) => {
+        if (key === 'flashAnswer' || key === 'callHold') return;
+        const cell = row.insertCell();
+        cell.textContent = value;
+    });
+
+    const actionCell = row.insertCell();
+
+    const btn1 = document.createElement('button');
+    btn1.classList.add('actions');
+    btn1.textContent = "▶";
+    btn1.title = 'Resume/Answer';
+    btn1.addEventListener('click', () => actionRecord(row, btn1.title));
+
+    const btn2 = document.createElement('button');
+    btn2.classList.add('actions');
+    btn2.textContent = "◼";
+    btn2.title = 'Reject/Release';
+    btn2.addEventListener('click', () => actionRecord(row, btn2.title));
+
+    const btn3 = document.createElement('button');
+    btn3.classList.add('actions');
+    btn3.textContent = "✽";
+    btn3.title = 'HoldCall';
+    btn3.addEventListener('click', () => actionRecord(row, btn3.title));
+
+    actionCell.appendChild(btn1);
+    actionCell.appendChild(btn2);
+    actionCell.appendChild(btn3);
+
+    if (msg.flashAnswer) {
+        btn1.style.animation = 'flashButton 1s infinite';
+        ringingSound.play()
+    }
+
+    ws.send(JSON.stringify({ message: "Call record added!" }));
+}
 
 ws.onopen = () => {
     console.log('Connected to server');
@@ -283,27 +390,31 @@ ws.onopen = () => {
 ws.onmessage = (event) => {
     const msg = JSON.parse(event.data);
 
-    row = Array.from(dataTable.rows).find(row => row.cells[2].textContent === msg.imsi);
+    if (msg.callID) {
+        populateCallsRecord(msg)
+        return
+    }
+
+    let row = Array.from(dataTable.rows).find(row => row.cells[2].textContent === msg.imsi);
     if (row) {
         const cells = row.cells;
         cells[5].textContent = msg.msisdn;
         cells[6].textContent = msg.regStatus;
         cells[7].textContent = msg.expires;
 
-        // document.getElementById('enabled').value = cells[1].textContent.toLowerCase();
-        // document.getElementById('imsi').value = cells[2].textContent;
-        // document.getElementById('ki').value = cells[3].textContent;
-        // document.getElementById('opc').value = cells[4].textContent;
-        // // document.getElementById('msisdn').value = cells[5].textContent;
-        // // document.getElementById('registration').value = cells[6].textContent;
-        // document.getElementById('expires').value = cells[7].textContent;
-        // document.getElementById('udpPort').value = cells[8].textContent;
-
-        ws.send(JSON.stringify({ message: "Record updated!" }));
+        ws.send(JSON.stringify({ message: "Line record updated!" }));
     }
 
-    console.log('Received:', msg);
 };
+
+async function actionRecord(row, action) {
+    const params = { imsi: row.cells[0].textContent, callID: row.cells[5].textContent, action };
+    const queryString = new URLSearchParams(params).toString();
+    const url = `/callAction?${queryString}`;
+    const response = await fetch(url, { method: 'POST' });
+    if (!response.ok) alert('Error: ' + response.statusText);
+}
+
 
 ws.onclose = () => {
     console.log('Disconnected from server');

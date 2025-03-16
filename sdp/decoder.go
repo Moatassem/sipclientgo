@@ -300,7 +300,7 @@ func (d *Decoder) connection(v string) (*Connection, error) {
 				return nil, err
 			}
 			c.Address, c.TTL = p[0], int(ttl)
-			p = append(p[:1], p[2:]...)
+			// p = append(p[:1], p[2:]...)
 		}
 	case TypeIPv6:
 		if len(p) > 1 {

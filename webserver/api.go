@@ -72,6 +72,9 @@ func webHandler(w http.ResponseWriter, r *http.Request) {
 		} else if r.URL.Path == "/portalData" {
 			servePortalData(w)
 			return
+		} else if r.URL.Path == "/calls" {
+			serveCalls(w)
+			return
 		} else if strings.HasPrefix(r.URL.Path, "/portal/") {
 			serveStaticFiles(w, r)
 			return
@@ -85,6 +88,16 @@ func webHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		} else if r.URL.Path == "/portalData" {
 			handlePortalData(w, r)
+			return
+		} else if r.URL.Path == "/callAction" {
+			imsi := r.URL.Query().Get("imsi")
+			callID := r.URL.Query().Get("callID")
+			action := r.URL.Query().Get("action")
+			if err := sip.UEs.DoCallAction(imsi, callID, action); err != nil {
+				http.Error(w, err.Error(), http.StatusNotFound)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
 			return
 		}
 	case http.MethodDelete:
@@ -402,5 +415,14 @@ func listenToWS(ws *websocket.Conn) {
 		// 	fmt.Println("Error writing json.", err)
 		// 	break
 		// }
+	}
+}
+
+func serveCalls(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	calls := sip.UEs.GetCalls()
+	if err := json.NewEncoder(w).Encode(calls); err != nil {
+		http.Error(w, "Error encoding response", http.StatusInternalServerError)
+		return
 	}
 }

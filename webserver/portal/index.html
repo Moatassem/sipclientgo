@@ -5,86 +5,119 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="/portal/favicon.ico">
-    <title>UE Management</title>
+    <title>UEs Portal</title>
     <link rel="stylesheet" href="/portal/styles.css">
 </head>
 
 <body>
+    <audio id="ringingSound" src="/portal/ringtone.mp3" loop></audio>
     <div class="container">
-        <h1>IMS Configuration</h1>
-        <div class="containerMain">
-            <div class="form-group global" style="margin-right: 3px;">
-                <label for="pcscfSocket">PCSCF UDP Socket:</label>
-                <input type="text" id="pcscfSocket" required>
+        <details>
+            <summary>IMS Configuration</summary>
+            <div class="containerMain">
+                <div class="form-group global" style="margin-right: 3px;">
+                    <label for="pcscfSocket">PCSCF UDP Socket:</label>
+                    <input type="text" id="pcscfSocket" required>
+                </div>
+                <div class="form-group global">
+                    <label for="imsDomain">IMS Domain:</label>
+                    <input type="text" id="imsDomain" required>
+                </div>
+                <button id="editData" class="mainButtons" data-action-edit="Edit Data" data-action-cancel="Cancel Edit"></button>
+                <button id="saveData" class="mainButtons" disabled>Save Data</button>
             </div>
-            <div class="form-group global">
-                <label for="imsDomain">IMS Domain:</label>
-                <input type="text" id="imsDomain" required>
+        </details>
+
+        <details>
+            <summary>UE Clients Management</summary>
+            <form id="recordForm" style="margin-bottom: 20px;">
+                <div class="form-group2">
+                    <div class="form-childgroup">
+                        <label for="enabled">Enabled:</label>
+                        <select id="enabled" required>
+                            <option value="true">True</option>
+                            <option value="false">False</option>
+                        </select>
+                    </div>
+                    <div class="form-childgroup" style="margin-left: 10px;">
+                        <label for="udpPort">UDP Port:</label>
+                        <input type="number" id="udpPort" min="5000" max="6000" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="imsi">IMSI:</label>
+                    <input type="text" id="imsi" required>
+                </div>
+
+                <div class="form-group wideinput">
+                    <label for="ki">KI:</label>
+                    <input type="text" id="ki" required>
+                </div>
+
+                <div class="form-group wideinput">
+                    <label for="opc">OPC:</label>
+                    <input type="text" id="opc" required>
+                </div>
+
+                <div class="form-group" style="min-width: 125px;">
+                    <label for="expires">Expires:</label>
+                    <input type="text" id="expires" required>
+                </div>
+
+                <button type="submit">Add Record</button>
+                <button id="deleteSelected">Delete Selected</button>
+                <button id="refresh">Refresh</button>
+            </form>
+        </details>
+
+        <details>
+            <summary>UE Clients</summary>
+            <div class="table-wrapper">
+                <table id="dataTable">
+                    <thead>
+                        <tr>
+                            <th>Select</th>
+                            <th>Enabled</th>
+                            <th>IMSI</th>
+                            <th>KI</th>
+                            <th>OPC</th>
+                            <th>MsIsdn</th>
+                            <th>Reg Status</th>
+                            <th>Expires</th>
+                            <th>UDP Port</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
             </div>
-            <button id="editData" class="mainButtons" data-action-edit="Edit Data" data-action-cancel="Cancel Edit"></button>
-            <button id="saveData" class="mainButtons" disabled>Save Data</button>
+        </details>
+
+        <div class="callmanage">
+            <h2 style="margin-top: 20px; margin-bottom: 10px">Calls Management</h2>
+            <button id="btnRefreshCalls" class="smallButton">Refresh Table</button>
+            <button id="btnClearCalls" class="smallButton">Clear Table</button>
         </div>
-
-        <h1>UE Client Management</h1>
-        <form id="recordForm">
-            <div class="form-group2">
-                <div class="form-childgroup">
-                    <label for="enabled">Enabled:</label>
-                    <select id="enabled" required>
-                        <option value="true">True</option>
-                        <option value="false">False</option>
-                    </select>
-                </div>
-                <div class="form-childgroup" style="margin-left: 10px;">
-                    <label for="udpPort">UDP Port:</label>
-                    <input type="number" id="udpPort" min="5000" max="6000" required>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="imsi">IMSI:</label>
-                <input type="text" id="imsi" required>
-            </div>
-
-            <div class="form-group wideinput">
-                <label for="ki">KI:</label>
-                <input type="text" id="ki" required>
-            </div>
-
-            <div class="form-group wideinput">
-                <label for="opc">OPC:</label>
-                <input type="text" id="opc" required>
-            </div>
-
-            <div class="form-group" style="min-width: 125px;">
-                <label for="expires">Expires:</label>
-                <input type="text" id="expires" required>
-            </div>
-
-            <button type="submit">Add Record</button>
-            <button id="deleteSelected">Delete Selected</button>
-            <button id="refresh">Refresh</button>
-        </form>
-
         <div class="table-wrapper">
-            <table id="dataTable">
+            <table id="callsTable">
                 <thead>
                     <tr>
-                        <th>Select</th>
-                        <th>Enabled</th>
                         <th>IMSI</th>
-                        <th>KI</th>
-                        <th>OPC</th>
                         <th>MsIsdn</th>
-                        <th>Reg Status</th>
-                        <th>Expires</th>
-                        <th>UDP Port</th>
+                        <th>Start Time</th>
+                        <th>End Time</th>
+                        <th>Direction</th>
+                        <th>Call ID</th>
+                        <!-- <th>Media Details</th> -->
+                        <th>State</th>
                         <th>Action</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
             </table>
         </div>
+
     </div>
 
     <script src="/portal/script.js"></script>

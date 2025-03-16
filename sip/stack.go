@@ -11,7 +11,6 @@ import (
 	"sipclientgo/system"
 	"strconv"
 	"strings"
-	"time"
 )
 
 func processPDU(payload []byte) (*SipMessage, []byte, error) {
@@ -419,6 +418,7 @@ func sipStack(sipmsg *SipMessage, ss *SipSession, newSesType NewSessionType) {
 		}
 		switch method := sipmsg.GetMethod(); method {
 		case INVITE:
+			ss.logSessData(nil, nil)
 			ss.SendResponse(trans, status.Trying, EmptyBody())
 			ss.RouteRequestInternal(trans, sipmsg)
 		case ReINVITE:
@@ -436,7 +436,7 @@ func sipStack(sipmsg *SipMessage, ss *SipSession, newSesType NewSessionType) {
 					ss.SendResponseDetailed(trans, NewResponsePackSIPQ850Details(sc, qc, wr), EmptyBody())
 					return
 				}
-				ss.SendResponse(trans, status.OK, NewMessageSDPBody(ss.LocalSDP.Bytes()))
+				ss.SendResponse(trans, status.OK, NewMessageSDPBody(ss.LocalSDP))
 			default:
 				ss.SendResponseDetailed(trans, NewResponsePackSIPQ850Details(status.ServiceUnavailable, q850.InterworkingUnspecified, "Not supported action"), EmptyBody())
 			}
@@ -444,15 +444,14 @@ func sipStack(sipmsg *SipMessage, ss *SipSession, newSesType NewSessionType) {
 			if trans.Method == INVITE {
 				ss.FinalizeState()
 				if !ss.IsEstablished() {
+					ss.logSessData(nil, nil)
 					ss.DropMe()
 					return
 				}
+				ss.logSessData(utcNow(), nil)
 				ss.StartMaxCallDuration()
 				ss.StartInDialogueProbing()
 				go ss.mediaReceiver()
-
-				<-time.After(5 * time.Second)
-				ss.ReleaseMe("Drop call")
 			} else { //ReINVITE
 				if trans.IsFinalResponsePositiveSYNC() {
 					ss.ChecknSetDialogueChanging(false)
@@ -467,6 +466,7 @@ func sipStack(sipmsg *SipMessage, ss *SipSession, newSesType NewSessionType) {
 			ss.SetState(state.BeingCancelled)
 			ss.SendResponse(trans, 200, EmptyBody())
 			ss.SendResponseDetailed(nil, ResponsePack{StatusCode: 487, CustomHeaders: NewSHQ850OrSIP(487, "", "")}, EmptyBody())
+			ss.logSessData(nil, utcNow())
 		case BYE:
 			if !ss.IsEstablished() {
 				ss.SendResponseDetailed(trans, ResponsePack{StatusCode: 400, ReasonPhrase: "Incompatible Method With Session State"}, EmptyBody())
@@ -474,6 +474,7 @@ func sipStack(sipmsg *SipMessage, ss *SipSession, newSesType NewSessionType) {
 			}
 			ss.SetState(state.Cleared)
 			ss.SendResponse(trans, status.OK, EmptyBody())
+			ss.logSessData(nil, utcNow())
 			ss.DropMe()
 		case OPTIONS:
 			if sipmsg.IsOutOfDialgoue() { // incoming probing
@@ -493,7 +494,7 @@ func sipStack(sipmsg *SipMessage, ss *SipSession, newSesType NewSessionType) {
 					ss.SendResponseDetailed(trans, NewResponsePackSIPQ850Details(sc, qc, wr), EmptyBody())
 					return
 				}
-				ss.SendResponse(trans, status.OK, NewMessageSDPBody(ss.LocalSDP.Bytes()))
+				ss.SendResponse(trans, status.OK, NewMessageSDPBody(ss.LocalSDP))
 			default:
 				ss.SendResponseDetailed(trans, NewResponsePackSIPQ850Details(status.ServiceUnavailable, q850.InterworkingUnspecified, "Not supported action"), EmptyBody())
 			}
@@ -532,12 +533,14 @@ func sipStack(sipmsg *SipMessage, ss *SipSession, newSesType NewSessionType) {
 			case INVITE:
 				ss.FinalizeState()
 				ss.SendRequest(ACK, trans, EmptyBody())
-				// <-time.After(5 * time.Second)
-				// ss.ReleaseMe("Drop call")
+				ss.logSessData(utcNow(), nil)
 			case REGISTER:
 				ss.FinalizeState()
 				ss.logRegData(sipmsg)
 				ss.DropMe()
+			case ReINVITE:
+				ss.SendRequest(ACK, trans, EmptyBody())
+				ss.logSessData(nil, nil)
 			case INFO:
 			case OPTIONS: //probing or keepalive
 				if ss.Mode == mode.KeepAlive {
@@ -548,14 +551,20 @@ func sipStack(sipmsg *SipMessage, ss *SipSession, newSesType NewSessionType) {
 			case BYE:
 				ss.StopAllOutTransactions()
 				ss.FinalizeState()
+				ss.logSessData(nil, nil)
 				ss.DropMe()
 			}
 		case stsCode <= 399:
 		default: // 400-699
 			switch trans.Method {
 			case INVITE:
-				ss.SetState(state.Failed)
+				if ss.IsBeingEstablished() {
+					ss.SetState(state.Rejected)
+				} else {
+					ss.FinalizeState()
+				}
 				ss.SendRequest(ACK, trans, EmptyBody())
+				ss.logSessData(nil, utcNow())
 				ss.DropMe()
 			case REGISTER:
 				sipstate := ss.SetState(state.Failed)

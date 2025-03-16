@@ -11,7 +11,7 @@ body {
     background: black;
     display: flex;
     justify-content: center;
-    align-items: center;
+    /* align-items: center; */
     padding: 20px;
 }
 
@@ -22,6 +22,16 @@ body {
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+ #ringingSound {
+    display: none;
+}
+
+summary{
+    margin-bottom: 20px;
+    font-size: 2rem;
+    cursor: pointer;
 }
 
 /* Title */
@@ -36,7 +46,7 @@ form {
     flex-direction: row;
     /* grid-template-columns: repeat(auto-fit, minmax(250px, 2fr)); */
     gap: 15px;
-    margin-bottom: 20px;
+    /* margin-bottom: 20px; */
     background: #e9ecef;
     padding: 20px;
     border-radius: 8px;
@@ -106,6 +116,18 @@ input:disabled, select:disabled{
     background-color: beige;
 }
 
+.callmanage{
+    display: flex;
+    align-items: center;
+}
+
+.smallButton{
+    height: 35px;
+    margin-left: 5px;
+    top: 3px;
+    position: relative;
+}
+
 /* Buttons */
 button {
     padding: 10px;
@@ -116,6 +138,13 @@ button {
     cursor: pointer;
     transition: all 0.3s ease;
 }
+
+@keyframes flashButton {
+            0% { color: red;box-shadow: 0 0 10px yellow;  }
+            50% { color: white;box-shadow: 0 0 10px red;  }
+            100% { color: red;box-shadow: 0 0 10px yellow;  }
+        }
+
 
 button:hover {
     background: #ebc99e;
@@ -135,7 +164,7 @@ button:disabled {
 table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 20px;
+    /* margin-top: 20px; */
     background: white;
 }
 
