@@ -1056,11 +1056,14 @@ func (ss *SipSession) StartMaxCallDuration() {
 }
 
 func (ss *SipSession) probingTickerHandler(doneChan chan any, tkChan <-chan time.Time) {
-	select {
-	case <-doneChan:
-	case <-tkChan:
-		if ss.IsEstablished() {
-			ss.SendRequestDetailed(RequestPack{Method: OPTIONS, Max70: true, IsProbing: true}, nil, EmptyBody())
+	for {
+		select {
+		case <-doneChan:
+			return
+		case <-tkChan:
+			if ss.IsEstablished() {
+				ss.SendRequestDetailed(RequestPack{Method: OPTIONS, Max70: true, IsProbing: true}, nil, EmptyBody())
+			}
 		}
 	}
 }
