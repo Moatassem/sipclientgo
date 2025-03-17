@@ -345,10 +345,35 @@ const (
 
 )
 
-// NegotiateMode negotiates streaming mode.
-func NegotiateMode(local, remote string) string {
+func GetOriginatingMode(local string, putCallonHold bool) (string, bool) {
+	if putCallonHold {
+		switch local {
+		case "", SendRecv:
+			local = SendOnly
+		case RecvOnly:
+			local = Inactive
+		default:
+			return "", false
+		}
+	} else {
+		switch local {
+		case SendOnly:
+			local = SendRecv
+		case Inactive:
+			local = RecvOnly
+		case "":
+			local = SendRecv
+		default:
+			return "", false
+		}
+	}
+	return local, true
+}
+
+// NegotiateAnswerMode negotiates streaming mode.
+func NegotiateAnswerMode(local, remote string) string {
 	switch local {
-	case SendRecv:
+	case "", SendRecv:
 		switch remote {
 		case RecvOnly:
 			return SendOnly
@@ -357,15 +382,17 @@ func NegotiateMode(local, remote string) string {
 		default:
 			return remote
 		}
-	case SendOnly:
+	case Inactive, SendOnly:
 		switch remote {
 		case SendRecv, RecvOnly:
 			return SendOnly
 		}
 	case RecvOnly:
 		switch remote {
-		case SendRecv, SendOnly:
+		case SendOnly:
 			return RecvOnly
+		default:
+			return remote
 		}
 	}
 	return Inactive

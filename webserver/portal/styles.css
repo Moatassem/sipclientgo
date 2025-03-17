@@ -140,9 +140,9 @@ button {
 }
 
 @keyframes flashButton {
-            0% { color: red;box-shadow: 0 0 10px yellow;  }
-            50% { color: white;box-shadow: 0 0 10px red;  }
-            100% { color: red;box-shadow: 0 0 10px yellow;  }
+            0% { color: red;box-shadow: 0 0 15px white;  }
+            50% { color: white;box-shadow: 0 0 15px red;  }
+            100% { color: red;box-shadow: 0 0 15px white;  }
         }
 
 

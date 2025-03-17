@@ -386,14 +386,10 @@ func handleWSConnection(w http.ResponseWriter, r *http.Request) {
 	}
 	// defer ws.Close()
 
-	if global.WSServer != nil {
-		global.WSServer.Close()
-	}
-
-	global.WSServer = ws
+	global.SetWebSocket(ws)
 
 	global.WtGrp.Add(1)
-	go listenToWS(global.WSServer)
+	go listenToWS(ws)
 }
 
 func listenToWS(ws *websocket.Conn) {

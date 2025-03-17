@@ -48,11 +48,7 @@ var (
 
 	PCSCFSocket *net.UDPAddr
 	ImsDomain   string
-	// Ki          string
-	// Opc         string
-	// Imsi        string
 
-	WSServer          *websocket.Conn
 	IsSystemBigEndian bool
 
 	MediaPath string
@@ -64,6 +60,9 @@ var (
 
 	WtGrp  sync.WaitGroup
 	WtGrpC int32
+
+	wsmu   sync.Mutex
+	wsconn *websocket.Conn
 )
 
 var (

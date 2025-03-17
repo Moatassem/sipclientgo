@@ -3,6 +3,9 @@ package global
 import (
 	"fmt"
 	"net"
+	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 type SystemError struct {
@@ -28,4 +31,29 @@ func NewSipUdpUserAgent(udpAddr *net.UDPAddr) *SipUdpUserAgent {
 		return nil
 	}
 	return &SipUdpUserAgent{UDPAddr: udpAddr}
+}
+
+// =============================================
+type SipTimer struct {
+	DoneCh chan any
+	Tmr    *time.Timer
+}
+
+// =============================================
+
+func SetWebSocket(ws *websocket.Conn) {
+	wsmu.Lock()
+	defer wsmu.Unlock()
+	if wsconn != nil {
+		wsconn.Close()
+	}
+	wsconn = ws
+}
+
+func WriteJSONToWebSocket(v any) {
+	wsmu.Lock()
+	defer wsmu.Unlock()
+	if wsconn != nil {
+		wsconn.WriteJSON(v)
+	}
 }

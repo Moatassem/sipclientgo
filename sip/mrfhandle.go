@@ -49,33 +49,17 @@ func (ss *SipSession) RouteRequestInternal(trans *Transaction, sipmsg1 *SipMessa
 // MRF methods
 
 func (ss *SipSession) buildSDPOffer(callhold bool) bool {
+	medDir, ok := sdp.GetOriginatingMode(ss.LocalMedDir, callhold)
+
+	if !ok {
+		return false
+	}
+
+	ss.LocalMedDir = medDir
+
 	if ss.MediaListener == nil {
 		ss.MediaListener = MediaPorts.ReserveSocket()
 	}
-
-	if callhold {
-		switch ss.LocalMedDir {
-		case "", sdp.SendRecv:
-			ss.LocalMedDir = sdp.SendOnly
-		case sdp.RecvOnly:
-			ss.LocalMedDir = sdp.Inactive
-		default:
-			return false
-		}
-	} else {
-		switch ss.LocalMedDir {
-		case sdp.SendOnly:
-			ss.LocalMedDir = sdp.SendRecv
-		case sdp.Inactive:
-			ss.LocalMedDir = sdp.RecvOnly
-		case "":
-			ss.LocalMedDir = sdp.SendRecv
-		default:
-			return false
-		}
-	}
-
-	medDir := ss.LocalMedDir
 
 	mySDP := sdp.NewSessionSDP(ss.SDPSessionID, ss.SDPSessionVersion, ClientIPv4.String(), B2BUAName, system.Uint32ToStr(ss.rtpSSRC), medDir, system.GetUDPortFromConn(ss.MediaListener), []uint8{sdp.G722, sdp.PCMA, sdp.PCMU, sdp.Telephone_Event})
 
@@ -226,7 +210,7 @@ func (ss *SipSession) buildSDPAnswer(sipmsg *SipMessage) (sipcode, q850code int,
 		// },
 	}
 
-	ss.LocalMedDir = sdp.NegotiateMode(ss.LocalMedDir, ss.RemoteMedDir)
+	ss.LocalMedDir = sdp.NegotiateAnswerMode(ss.LocalMedDir, ss.RemoteMedDir)
 
 	for i := range sdpses.Media {
 		media := sdpses.Media[i]
@@ -921,9 +905,7 @@ func (ss *SipSession) logRegData(sipmsg *SipMessage) {
 	}
 	ue.RegStatus = ss.GetState().String()
 
-	if WSServer != nil {
-		WSServer.WriteJSON(ue)
-	}
+	WriteJSONToWebSocket(ue)
 }
 
 func utcNow() *time.Time {
@@ -984,7 +966,5 @@ func (ss *SipSession) getSessData(starttm, endtm *time.Time) sessData {
 
 func (ss *SipSession) logSessData(starttm, endtm *time.Time) {
 	sesData := ss.getSessData(starttm, endtm)
-	if WSServer != nil {
-		WSServer.WriteJSON(sesData)
-	}
+	WriteJSONToWebSocket(sesData)
 }
