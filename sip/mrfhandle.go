@@ -226,7 +226,7 @@ func (ss *SipSession) buildSDPAnswer(sipmsg *SipMessage) (sipcode, q850code int,
 		// },
 	}
 
-	ss.LocalMedDir = sdp.NegotiateMode(sdp.SendRecv, ss.RemoteMedDir)
+	ss.LocalMedDir = sdp.NegotiateMode(ss.LocalMedDir, ss.RemoteMedDir)
 
 	for i := range sdpses.Media {
 		media := sdpses.Media[i]
