@@ -24,6 +24,16 @@ body {
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
 
+.logo{
+    float: right;
+    display: flex;
+    position: relative;
+    left: 15px;
+    height: 80px;
+    width: 80px;
+    top: -15px;
+}
+
  #ringingSound {
     display: none;
 }
