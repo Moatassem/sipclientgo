@@ -57,6 +57,9 @@ tryAgain:
 	fmt.Print("Loading API Webserver...")
 	fmt.Println("Success: HTTP", ws)
 
+	portalurl := fmt.Sprintf("http://%s/portal", ws)
+	fmt.Println("UE Portal:", portalurl)
+
 	loadDataLocally()
 }
 
@@ -396,14 +399,30 @@ func listenToWS(ws *websocket.Conn) {
 	defer global.WtGrp.Done()
 	defer ws.Close()
 	// Listen for messages from the client
+
+	msgtypes := map[int]string{
+		websocket.TextMessage:   "TextMessage",
+		websocket.BinaryMessage: "BinaryMessage",
+		websocket.CloseMessage:  "CloseMessage",
+		websocket.PingMessage:   "PingMessage",
+		websocket.PongMessage:   "PongMessage",
+	}
+
 	for {
-		var msg map[string]any
-		err := ws.ReadJSON(&msg)
+		// var msg map[string]any
+		// err := ws.ReadJSON(&msg)
+		// if err != nil {
+		// 	// fmt.Println("Error reading json.", err)
+		// 	break
+		// }
+		// fmt.Printf("Received: %v\n", msg)
+
+		msgtype, bytes, err := ws.ReadMessage()
 		if err != nil {
-			fmt.Println("Error reading json.", err)
 			break
 		}
-		fmt.Printf("Received: %v\n", msg)
+
+		fmt.Printf("Source: %s - Received: %v - Type: %s\n", ws.RemoteAddr().String(), string(bytes), msgtypes[msgtype])
 
 		// Send the received message back to the client
 		// err = ws.WriteJSON(msg)

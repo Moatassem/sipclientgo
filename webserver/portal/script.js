@@ -384,7 +384,8 @@ function populateCallsRecord(msg) {
 ws.onopen = () => {
     console.log('Connected to server');
     // Send a message to the server
-    ws.send(JSON.stringify({ message: "Hello, Server!" }));
+    // ws.send(JSON.stringify({ message: "Hello, Server!" }));
+    ws.send("Hello, Server!")
 };
 
 ws.onmessage = (event) => {
