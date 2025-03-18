@@ -14,6 +14,9 @@ const ws = new WebSocket(`ws://${location.host}/ws`);
 const btnRefreshCalls = document.getElementById('btnRefreshCalls');
 const btnClearCalls = document.getElementById('btnClearCalls');
 
+const animationProperty1 = 'flashButton 1s infinite'
+const animationProperty = 'flash 0.5s infinite alternate'
+
 
 document.addEventListener('DOMContentLoaded', function () {
     loadData()
@@ -332,7 +335,7 @@ function populateCallsRecord(msg) {
         ringingSound.currentTime = 0;
 
         let btnHold = row.getElementsByTagName('button')[2];
-        if (msg.callHold) btnHold.style.animation = 'flashButton 1s infinite';
+        if (msg.callHold) btnHold.style.animation = animationProperty;
         else btnHold.style.animation = '';
 
         if (msg.endTime !== 'N/A') btnHold.style.animation = '';
@@ -374,7 +377,7 @@ function populateCallsRecord(msg) {
     actionCell.appendChild(btn3);
 
     if (msg.flashAnswer) {
-        btn1.style.animation = 'flashButton 1s infinite';
+        btn1.style.animation = animationProperty;
         ringingSound.play()
     }
 

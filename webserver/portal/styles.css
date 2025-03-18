@@ -153,7 +153,18 @@ button {
             0% { color: red;box-shadow: 0 0 15px white;  }
             50% { color: white;box-shadow: 0 0 15px red;  }
             100% { color: red;box-shadow: 0 0 15px white;  }
-        }
+ }
+
+@keyframes flash {
+    0% {
+        background-color: #3498db;
+        box-shadow: 0 0 10px #3498db;
+    }
+    100% {
+        background-color: #e74c3c;
+        box-shadow: 0 0 20px #e74c3c;
+    }
+}
 
 
 button:hover {
