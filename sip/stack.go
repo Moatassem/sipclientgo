@@ -455,7 +455,6 @@ func sipStack(sipmsg *SipMessage, ss *SipSession, newSesType NewSessionType) {
 			} else { //ReINVITE
 				if trans.IsFinalResponsePositiveSYNC() {
 					ss.ChecknSetDialogueChanging(false)
-					// go ss.startRTPStreaming("ErsemAlb", false, true, true)
 				}
 			}
 		case CANCEL:

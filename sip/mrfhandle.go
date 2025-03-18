@@ -258,12 +258,12 @@ func (ss *SipSession) initMediaParameters() {
 }
 
 func (ss *SipSession) answerMRF(trans *Transaction, sipmsg *SipMessage) {
+	ss.initMediaParameters()
+
 	if sc, qc, wr := ss.buildSDPAnswer(sipmsg); sc != 0 {
 		ss.RejectMe(trans, sc, qc, wr)
 		return
 	}
-
-	ss.initMediaParameters()
 
 	ss.SendResponse(trans, status.Ringing, EmptyBody())
 

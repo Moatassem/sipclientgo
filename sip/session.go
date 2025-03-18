@@ -61,8 +61,10 @@ type SipSession struct {
 	WithTeleEvents bool
 	NewDTMF        bool
 	audioBytes     []byte
-	RemoteMedDir   string
-	LocalMedDir    string
+
+	RemoteMedDir string
+	LocalMedDir  string
+
 	rtpChan        chan any
 	rtpRFC4733TS   uint32
 	rtpSequenceNum uint16
