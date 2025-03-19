@@ -925,7 +925,7 @@ type sessData struct {
 	FlashAnswer bool   `json:"flashAnswer"`
 }
 
-func (ss *SipSession) getSessData(starttm, endtm *time.Time) sessData {
+func (ss *SipSession) getSessData(starttm, endtm *time.Time, sts ...int) sessData {
 	sesstate := ss.GetState()
 
 	sesData := sessData{
@@ -933,8 +933,13 @@ func (ss *SipSession) getSessData(starttm, endtm *time.Time) sessData {
 		MsIsdn:    ss.UserEquipment.MsIsdn,
 		Direction: ss.Direction.String(),
 		CallId:    ss.CallID,
-		State:     sesstate.String(),
 		CallHold:  sdp.IsMedDirHolding(ss.LocalMedDir),
+	}
+
+	if len(sts) == 0 {
+		sesData.State = sesstate.String()
+	} else {
+		sesData.State = DicResponse[sts[0]]
 	}
 
 	sesData.FlashAnswer = (ss.Direction == INBOUND && sesstate == state.BeingEstablished)
@@ -964,7 +969,7 @@ func (ss *SipSession) getSessData(starttm, endtm *time.Time) sessData {
 	return sesData
 }
 
-func (ss *SipSession) logSessData(starttm, endtm *time.Time) {
-	sesData := ss.getSessData(starttm, endtm)
+func (ss *SipSession) logSessData(starttm, endtm *time.Time, sts ...int) {
+	sesData := ss.getSessData(starttm, endtm, sts...)
 	WriteJSONToWebSocket(sesData)
 }

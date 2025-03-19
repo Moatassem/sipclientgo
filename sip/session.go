@@ -8,6 +8,7 @@ import (
 	"runtime"
 	. "sipclientgo/global"
 	"sipclientgo/guid"
+	"sipclientgo/q850"
 	"sipclientgo/sdp"
 	"sipclientgo/sip/mode"
 	"sipclientgo/sip/state"
@@ -89,6 +90,8 @@ type SipSession struct {
 
 	IsDisposed    bool
 	multiUseMutex sync.Mutex // used for synchronizing no18x & noAns timers, probing & max duration, dropping session
+	no18xSTimer   *SipTimer
+	noAnsSTimer   *SipTimer
 
 	maxDurationTimer *time.Timer  //used on inbound sessions only
 	probingTicker    *time.Ticker //used on inbound sessions only
@@ -1003,6 +1006,7 @@ func CheckPendingTransaction(ss *SipSession, tx *Transaction) {
 		ss.FinalizeState()
 		ss.DropMe()
 	case PRACK:
+		ss.StopNoTimers()
 		ss.SetState(state.Failed)
 		ss.DropMe()
 	case REGISTER:
@@ -1034,6 +1038,81 @@ func (ss *SipSession) ChecknSetDialogueChanging(newflag bool) bool {
 }
 
 // ==================================================================
+
+// Unsafe
+func (ss *SipSession) setTimerPointer(tt TimerType, tmr *SipTimer) {
+	if tt == NoAnswer {
+		ss.noAnsSTimer = tmr
+	} else {
+		ss.no18xSTimer = tmr
+	}
+}
+
+// Unsafe
+func (ss *SipSession) getTimerPointer(tt TimerType) *SipTimer {
+	if tt == NoAnswer {
+		return ss.noAnsSTimer
+	} else {
+		return ss.no18xSTimer
+	}
+}
+
+func (ss *SipSession) StartTimer(tt TimerType) {
+	ss.multiUseMutex.Lock()
+	defer ss.multiUseMutex.Unlock()
+	if (tt == NoAnswer && ss.noAnsSTimer != nil) || (tt == No18x && ss.no18xSTimer != nil) {
+		return
+	}
+	var delay int
+	if tt == NoAnswer {
+		delay = NoAnswerTimeout
+	} else {
+		delay = No18xTimeout
+	}
+	tmr := &SipTimer{
+		DoneCh: make(chan any),
+		Tmr:    time.NewTimer(time.Duration(delay) * time.Second),
+	}
+	ss.setTimerPointer(tt, tmr)
+	go ss.TimerHandler(tt)
+}
+
+func (ss *SipSession) StopTimer(tt TimerType) {
+	ss.multiUseMutex.Lock()
+	defer ss.multiUseMutex.Unlock()
+	siptmr := ss.getTimerPointer(tt)
+	if siptmr == nil {
+		return
+	}
+	if siptmr.Tmr.Stop() {
+		close(siptmr.DoneCh)
+	}
+}
+
+func (ss *SipSession) StopNoTimers() {
+	ss.StopTimer(No18x)
+	ss.StopTimer(NoAnswer)
+}
+
+func (ss *SipSession) TimerHandler(ttt TimerType) {
+	tmr := ss.getTimerPointer(ttt)
+	select {
+	case <-tmr.DoneCh:
+		ss.multiUseMutex.Lock()
+		defer ss.multiUseMutex.Unlock()
+		ss.setTimerPointer(ttt, nil)
+		return
+	case <-tmr.Tmr.C:
+	}
+	ss.multiUseMutex.Lock()
+	close(tmr.DoneCh)
+	ss.setTimerPointer(ttt, nil)
+	ss.multiUseMutex.Unlock()
+	ss.CancelMe(q850.NoAnswerFromUser, ttt.Details())
+	ss.logSessData(nil, utcNow())
+}
+
+// ------------------------------------------------------------------------------
 
 func (ss *SipSession) StartInDialogueProbing() {
 	if InDialogueProbingSec == 0 {
@@ -1145,6 +1224,7 @@ func (ss *SipSession) CancelMe(q850 int, details string) bool {
 		return false
 	}
 	if ss.IsBeingEstablished() {
+		ss.StopNoTimers()
 		ss.SetState(state.BeingCancelled)
 		if q850 == -1 || details == "" {
 			ss.SendRequest(CANCEL, nil, EmptyBody())
@@ -1218,7 +1298,6 @@ func (session *SipSession) DropMe() {
 func (ss *SipSession) DropMeTimed() {
 	go func() {
 		<-time.After(time.Second * time.Duration(SessionDropDelaySec))
-		// time.Sleep(time.Second * time.Duration(SessionDropDelaySec))
 		ss.DropMe()
 	}()
 }

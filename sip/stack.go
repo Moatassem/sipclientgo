@@ -526,10 +526,15 @@ func sipStack(sipmsg *SipMessage, ss *SipSession, newSesType NewSessionType) {
 		}
 		switch {
 		case 180 <= stsCode && stsCode <= 189:
+			ss.StopTimer(No18x)
+			ss.logSessData(utcNow(), nil, stsCode)
 		case stsCode <= 199:
+			ss.StartTimer(No18x)
+			ss.StartTimer(NoAnswer)
 		case stsCode <= 299:
 			switch trans.Method {
 			case INVITE:
+				ss.StopNoTimers()
 				ss.FinalizeState()
 				ss.SendRequest(ACK, trans, EmptyBody())
 				ss.logSessData(utcNow(), nil)
@@ -554,10 +559,14 @@ func sipStack(sipmsg *SipMessage, ss *SipSession, newSesType NewSessionType) {
 				ss.DropMe()
 			}
 		case stsCode <= 399:
+			ss.StopNoTimers()
+			ss.Ack3xxTo6xx(state.Redirected)
+			ss.SendRequest(ACK, trans, EmptyBody())
 		default: // 400-699
 			switch trans.Method {
 			case INVITE:
 				if ss.IsBeingEstablished() {
+					ss.StopNoTimers()
 					ss.SetState(state.Rejected)
 				} else {
 					ss.FinalizeState()

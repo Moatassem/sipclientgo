@@ -328,11 +328,13 @@ function populateCallsRecord(msg) {
         row.cells[3].textContent = msg.endTime;
         row.cells[6].textContent = msg.state;
 
-        let btnAnswer = row.getElementsByTagName('button')[0];
-        btnAnswer.style.animation = '';
+        if (msg.state.endsWith('ed')) {
+            ringingSound.pause();
+            ringingSound.currentTime = 0;
 
-        ringingSound.pause();
-        ringingSound.currentTime = 0;
+            let btnAnswer = row.getElementsByTagName('button')[0];
+            btnAnswer.style.animation = '';
+        }
 
         let btnHold = row.getElementsByTagName('button')[2];
         if (msg.callHold) btnHold.style.animation = animationProperty;
@@ -340,7 +342,7 @@ function populateCallsRecord(msg) {
 
         if (msg.endTime !== 'N/A') btnHold.style.animation = '';
 
-        ws.send(JSON.stringify({ message: "Call record updated!" }));
+        ws.send("Call record updated!");
 
         return
     }
@@ -381,13 +383,12 @@ function populateCallsRecord(msg) {
         ringingSound.play()
     }
 
-    ws.send(JSON.stringify({ message: "Call record added!" }));
+    ws.send("Call record added!");
 }
 
 ws.onopen = () => {
     console.log('Connected to server');
     // Send a message to the server
-    // ws.send(JSON.stringify({ message: "Hello, Server!" }));
     ws.send("Hello, Server!")
 };
 
@@ -406,7 +407,7 @@ ws.onmessage = (event) => {
         cells[6].textContent = msg.regStatus;
         cells[7].textContent = msg.expires;
 
-        ws.send(JSON.stringify({ message: "Line record updated!" }));
+        ws.send("Line record updated!");
     }
 
 };

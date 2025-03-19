@@ -40,6 +40,9 @@ const (
 	InDialogueProbingSec int    = 60
 	MaxCallDurationSec   int    = 7200
 	MinMaxFwds           int    = 0
+
+	NoAnswerTimeout int = 120
+	No18xTimeout    int = 20
 )
 
 var (
