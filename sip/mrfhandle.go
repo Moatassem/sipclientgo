@@ -267,6 +267,8 @@ func (ss *SipSession) answerMRF(trans *Transaction, sipmsg *SipMessage) {
 
 	ss.SendResponse(trans, status.Ringing, EmptyBody())
 
+	ss.logSessData(nil, nil, status.Ringing)
+
 	<-ss.AnswerChan
 
 	if !ss.IsBeingEstablished() {
