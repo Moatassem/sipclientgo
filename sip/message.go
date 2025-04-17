@@ -263,7 +263,7 @@ func (sipmsg *SipMessage) GetRegistrationData() (contact, ext, ruri, ipport stri
 	contact = sipmsg.Headers.ValueHeader(global.Contact)
 	contact1 := strings.Replace(contact, "-", ";", 1) // Contact: <sip:12345-0x562f8a9e7390@172.20.40.132:5030>;expires=30;+sip.instance="<urn:uuid:da213fce-693c-3403-8455-a548a10ef970>"
 	var mtch []string
-	if global.RMatch(contact1, global.INVITERURI, &mtch) {
+	if global.RMatch(contact1, global.ContactHeader, &mtch) {
 		ruri = mtch[0]
 		ext = mtch[2]
 		ipport = mtch[5]

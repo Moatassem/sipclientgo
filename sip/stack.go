@@ -370,7 +370,7 @@ func sipStack(sipmsg *SipMessage, ss *SipSession, newSesType NewSessionType) {
 	} else {
 		trans = ss.AddIncomingResponse(sipmsg)
 	}
-
+	
 	if trans == nil {
 		ss.DropMe()
 		return

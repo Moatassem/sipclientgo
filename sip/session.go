@@ -12,7 +12,7 @@ import (
 	"sipclientgo/sdp"
 	"sipclientgo/sip/mode"
 	"sipclientgo/sip/state"
-	"sipclientgo/system"
+	. "sipclientgo/system"
 	"sync"
 	"time"
 )
@@ -131,7 +131,7 @@ func (session *SipSession) GetTransactionSYNC(SIPMsg *SipMessage) *Transaction {
 	CSeqNum := SIPMsg.CSeqNum
 	if SIPMsg.IsRequest() {
 		CSeqRT = SIPMsg.GetMethod()
-		return system.Find(session.Transactions, func(x *Transaction) bool {
+		return Find(session.Transactions, func(x *Transaction) bool {
 			return x.Direction == INBOUND && x.CSeq == CSeqNum &&
 				((x.Method == CSeqRT && x.ViaBranch == SIPMsg.ViaBranch) ||
 					(CSeqRT == ACK && x.Method.RequiresACK() && x.IsACKed && session.FromTag == SIPMsg.FromTag &&
@@ -139,7 +139,7 @@ func (session *SipSession) GetTransactionSYNC(SIPMsg *SipMessage) *Transaction {
 		})
 	} else {
 		CSeqRT = SIPMsg.CSeqMethod
-		return system.Find(session.Transactions, func(x *Transaction) bool {
+		return Find(session.Transactions, func(x *Transaction) bool {
 			return x.Direction == OUTBOUND && x.ViaBranch == SIPMsg.ViaBranch && x.CSeq == CSeqNum &&
 				(x.Method == CSeqRT || (CSeqRT == INVITE && x.Method == ReINVITE))
 		})
@@ -221,11 +221,11 @@ func (session *SipSession) AddIncomingRequest(requestMsg *SipMessage, lt *Transa
 			prackST = session.GetPRACKTransaction(rSeq, cSeq)
 			if prackST == nil {
 				prackST = NewSIPTransaction_RP(0, PRACKUnexpected)
-				system.LogError(system.LTSIPStack, fmt.Sprintf("Cannot find unPRACKed 1xx response for the incoming PRACK – Call-ID [%s]", requestMsg.CallID))
+				LogError(LTSIPStack, fmt.Sprintf("Cannot find unPRACKed 1xx response for the incoming PRACK – Call-ID [%s]", requestMsg.CallID))
 			}
 		} else {
 			prackST = NewSIPTransaction_RP(0, PRACKMissingBadRAck)
-			system.LogError(system.LTSIPStack, fmt.Sprintf("Cannot parse RAck header or it is missing for the incoming PRACK – Call-ID [%s]", requestMsg.CallID))
+			LogError(LTSIPStack, fmt.Sprintf("Cannot parse RAck header or it is missing for the incoming PRACK – Call-ID [%s]", requestMsg.CallID))
 		}
 		prackST.RequestMessage = requestMsg
 		prackST.CSeq = requestMsg.CSeqNum
@@ -282,7 +282,7 @@ func (session *SipSession) AddIncomingResponse(responseMsg *SipMessage) *Transac
 
 func (session *SipSession) GenerateOutgoingPRACKST(responseMsg *SipMessage) *Transaction {
 	// Parse RSeq from the headers and handle the error
-	rSeq := system.Str2Uint[uint32](responseMsg.Headers.ValueHeader(RSeq))
+	rSeq := Str2Uint[uint32](responseMsg.Headers.ValueHeader(RSeq))
 	cseqHeaderValue := responseMsg.Headers.ValueHeader(CSeq)
 	newST := NewSIPTransaction_RC(rSeq, cseqHeaderValue)
 
@@ -299,7 +299,7 @@ func (session *SipSession) AddTransaction(tx *Transaction) {
 }
 
 func (session *SipSession) GetReOrInviteTransaction(cSeqNum uint32, isFinalized bool) *Transaction {
-	return system.Find(session.Transactions, func(tx *Transaction) bool {
+	return Find(session.Transactions, func(tx *Transaction) bool {
 		return tx.Direction == INBOUND &&
 			tx.CSeq == cSeqNum &&
 			tx.Method.RequiresACK() &&
@@ -308,13 +308,13 @@ func (session *SipSession) GetReOrInviteTransaction(cSeqNum uint32, isFinalized 
 }
 
 func (session *SipSession) GetPendingOutgoingTransactions() []*Transaction {
-	return system.Filter(session.Transactions, func(tx *Transaction) bool {
+	return Filter(session.Transactions, func(tx *Transaction) bool {
 		return tx.Direction == OUTBOUND && !tx.IsFinalized
 	})
 }
 
 func (session *SipSession) GetPendingIncomingTransactions() []*Transaction {
-	return system.Filter(session.Transactions, func(tx *Transaction) bool {
+	return Filter(session.Transactions, func(tx *Transaction) bool {
 		return tx.Direction == INBOUND // && !tx.IsFinalized
 	})
 }
@@ -325,7 +325,7 @@ func (session *SipSession) GetPRACKTransaction(rSeqNum, cSeqNum uint32) *Transac
 	if reInvite != nil {
 		reInvite.StopTransTimer(true)
 	}
-	return system.Find(session.Transactions, func(tx *Transaction) bool {
+	return Find(session.Transactions, func(tx *Transaction) bool {
 		return tx.Direction == INBOUND && tx.RSeq == rSeqNum && tx.Method == PRACK
 	})
 }
@@ -333,13 +333,13 @@ func (session *SipSession) GetPRACKTransaction(rSeqNum, cSeqNum uint32) *Transac
 func (session *SipSession) AreTherePendingOutgoingPRACK() bool {
 	session.TransLock.Lock()
 	defer session.TransLock.Unlock()
-	return system.Any(session.Transactions, func(tx *Transaction) bool {
+	return Any(session.Transactions, func(tx *Transaction) bool {
 		return tx.Direction == OUTBOUND && tx.Method == PRACK && !tx.IsFinalized
 	})
 }
 
 func (session *SipSession) IsDuplicateINVITE(incINVITE *SipMessage) bool {
-	trans := system.Find(session.Transactions, func(tx *Transaction) bool {
+	trans := Find(session.Transactions, func(tx *Transaction) bool {
 		return tx.Direction == INBOUND && tx.Method == INVITE &&
 			tx.RequestMessage.FromTag == incINVITE.FromTag &&
 			tx.ViaBranch == incINVITE.ViaBranch && tx.CSeq == incINVITE.CSeqNum
@@ -350,7 +350,7 @@ func (session *SipSession) IsDuplicateINVITE(incINVITE *SipMessage) bool {
 func (session *SipSession) UnPRACKed18xCountSYNC() int {
 	session.TransLock.RLock()
 	defer session.TransLock.RUnlock()
-	lst := system.Filter(session.Transactions, func(x *Transaction) bool {
+	lst := Filter(session.Transactions, func(x *Transaction) bool {
 		return x.Direction == INBOUND && x.Method == PRACK && x.RequestMessage == nil
 	})
 	return len(lst)
@@ -381,10 +381,10 @@ func (session *SipSession) CreateSARequest(rqstpk RequestPack, body MessageBody)
 		session.FwdCSeq = 911
 	case REGISTER:
 		session.Mode = mode.Registration
-		session.FwdCSeq = uint32(system.RandomNum(1, 500))
+		session.FwdCSeq = uint32(RandomNum(1, 500))
 	case INVITE:
 		session.Mode = mode.Multimedia
-		session.FwdCSeq = uint32(system.RandomNum(1, 500))
+		session.FwdCSeq = uint32(RandomNum(1, 500))
 	default: // Any other
 	}
 	st := NewSIPTransaction_CRL(session.FwdCSeq, rqstpk.Method, nil)
@@ -404,7 +404,7 @@ func (session *SipSession) PrepareSARequestHeaders(st *Transaction, rqstpk Reque
 }
 
 func (session *SipSession) BuildSARequestHeaders(st *Transaction, rqstpk RequestPack, sipmsg *SipMessage) {
-	localsocket := system.GetUDPAddrFromConn(session.SIPUDPListenser)
+	localsocket := GetUDPAddrFromConn(session.SIPUDPListenser)
 	localIP := localsocket.IP.String()
 	remoteIP := session.RemoteUDP.IP.String()
 
@@ -435,7 +435,7 @@ func (session *SipSession) BuildSARequestHeaders(st *Transaction, rqstpk Request
 	hdrs.AddHeader(Call_ID, session.CallID)
 
 	// Set Via and Branch
-	hdrs.AddHeader(Via, fmt.Sprintf("%s;branch=%s", system.GenerateViaWithoutBranch(session.SIPUDPListenser), st.ViaBranch))
+	hdrs.AddHeader(Via, fmt.Sprintf("%s;branch=%s", GenerateViaWithoutBranch(session.SIPUDPListenser), st.ViaBranch))
 
 	// Set From Header with tag
 	session.FromTag = guid.NewTag()
@@ -464,11 +464,11 @@ func (session *SipSession) BuildSARequestHeaders(st *Transaction, rqstpk Request
 	// Set Max-Forwards
 	maxFwds := 70
 	sipmsg.MaxFwds = maxFwds
-	hdrs.SetHeader(Max_Forwards, system.Int2Str(maxFwds))
+	hdrs.SetHeader(Max_Forwards, Int2Str(maxFwds))
 
 	// Set Contact
 	if !hdrs.HeaderExists("Contact") {
-		hdrs.SetHeader(Contact, system.GenerateContact(localsocket))
+		hdrs.SetHeader(Contact, GenerateContact(localsocket))
 	}
 
 	// Set Date
@@ -505,8 +505,8 @@ func (session *SipSession) CreateHeadersForResponse(trans *Transaction, rspnspk 
 
 	// Add Contact header
 	if rspnspk.ContactHeader == "" {
-		localsocket := system.GetUDPAddrFromConn(session.SIPUDPListenser)
-		hdrs.AddHeader(Contact, system.GenerateContact(localsocket))
+		localsocket := GetUDPAddrFromConn(session.SIPUDPListenser)
+		hdrs.AddHeader(Contact, GenerateContact(localsocket))
 	} else {
 		hdrs.AddHeader(Contact, rspnspk.ContactHeader)
 	}
@@ -548,7 +548,7 @@ func (session *SipSession) CreateHeadersForResponse(trans *Transaction, rspnspk 
 
 	// Add tags and PRACK headers for responses > 100
 	if sc > 100 {
-		if !hdrs.ContainsToTag() && system.Is18xOrPositive(sc) && session.Direction == INBOUND {
+		if !hdrs.ContainsToTag() && Is18xOrPositive(sc) && session.Direction == INBOUND {
 			if session.ToTag == "" {
 				session.ToTag = guid.NewTag()
 			}
@@ -557,17 +557,15 @@ func (session *SipSession) CreateHeadersForResponse(trans *Transaction, rspnspk 
 			trans.To = session.ToHeader
 		}
 
-		hdrs.AddHeader(Refer_Sub, sipmsg.Headers.ValueHeader(Refer_Sub))
-
-		// hdrs.AddHeaderValues(Record_Route, system.Reverse(session.RecordRoutes))
 		hdrs.AddHeaderValues(Record_Route, session.RecordRoutes)
+		hdrs.AddHeader(Refer_Sub, sipmsg.Headers.ValueHeader(Refer_Sub))
 
 		// remoteses := session.LinkedSession
 		// prackRequested := remoteses != nil && remoteses.AreTherePendingOutgoingPRACK()
 		prackRequested := rspnspk.PRACKRequested || rspnspk.LinkedPRACKST != nil
 
 		// Add PRACK support for provisional responses if applicable
-		if system.IsProvisional18x(sc) && session.IsPRACKSupported && session.Direction == INBOUND && prackRequested {
+		if IsProvisional18x(sc) && session.IsPRACKSupported && session.Direction == INBOUND && prackRequested {
 			hdrs.SetHeader(RSeq, session.GenerateRSeqCreatePRACKSTSYNC(rspnspk.LinkedPRACKST))
 			hdrs.SetHeader(Require, "100rel")
 		}
@@ -588,7 +586,7 @@ func (session *SipSession) GenerateRSeqCreatePRACKSTSYNC(linkedPRACKST *Transact
 	session.TransLock.Lock()
 	defer session.TransLock.Unlock()
 	if session.RSeq == 0 {
-		session.RSeq = uint32(system.RandomNum(1, 999))
+		session.RSeq = uint32(RandomNum(1, 999))
 	} else {
 		session.RSeq++
 	}
@@ -659,7 +657,7 @@ func (session *SipSession) AddOutgoingRequest(rt Method, lt *Transaction) *Trans
 		default:
 			// Increment forward CSeq
 			if session.FwdCSeq == 0 {
-				session.FwdCSeq = uint32(system.RandomNum(0, 500))
+				session.FwdCSeq = uint32(RandomNum(0, 500))
 			} else {
 				session.FwdCSeq += 1
 			}
@@ -681,7 +679,7 @@ func (session *SipSession) AddOutgoingRequest(rt Method, lt *Transaction) *Trans
 		} else {
 			// Increment backward CSeq
 			if session.BwdCSeq == 0 {
-				session.BwdCSeq = uint32(system.RandomNum(600, 1000))
+				session.BwdCSeq = uint32(RandomNum(600, 1000))
 			} else {
 				session.BwdCSeq += 1
 			}
@@ -746,7 +744,7 @@ func (session *SipSession) PrepareRequestHeaders(trans *Transaction, rqstpk Requ
 	hdrs := NewSHsPointer(true)
 	sipmsg.Headers = hdrs
 
-	localsocket := system.GetUDPAddrFromConn(session.SIPUDPListenser)
+	localsocket := GetUDPAddrFromConn(session.SIPUDPListenser)
 
 	sl := sipmsg.StartLine
 	sl.RUri = session.RemoteContactURI
@@ -780,7 +778,7 @@ func (session *SipSession) PrepareRequestHeaders(trans *Transaction, rqstpk Requ
 			}
 		}
 	}
-	hdrs.SetHeader(Max_Forwards, system.Int2Str(maxFwds))
+	hdrs.SetHeader(Max_Forwards, Int2Str(maxFwds))
 
 	if rqstpk.Method == ReINVITE {
 		sipmsg.MaxFwds = maxFwds
@@ -789,13 +787,13 @@ func (session *SipSession) PrepareRequestHeaders(trans *Transaction, rqstpk Requ
 	if session.Direction == INBOUND {
 		hdrs.AddHeaderValues(Route, session.RecordRoutes)
 	} else {
-		hdrs.AddHeaderValues(Route, system.Reverse(session.RecordRoutes))
+		hdrs.AddHeaderValues(Route, Reverse(session.RecordRoutes))
 	}
 
 	// Add Contact, Call-ID, and Via headers
-	hdrs.SetHeader(Contact, system.GenerateContact(localsocket))
+	hdrs.SetHeader(Contact, GenerateContact(localsocket))
 	hdrs.SetHeader(Call_ID, session.CallID)
-	hdrs.AddHeader(Via, fmt.Sprintf("%s;branch=%s", system.GenerateViaWithoutBranch(session.SIPUDPListenser), trans.ViaBranch))
+	hdrs.AddHeader(Via, fmt.Sprintf("%s;branch=%s", GenerateViaWithoutBranch(session.SIPUDPListenser), trans.ViaBranch))
 }
 
 func (session *SipSession) ProcessRequestHeaders(trans *Transaction, sipmsg *SipMessage, rqstpk RequestPack, msgBody MessageBody) {
@@ -859,7 +857,7 @@ func (session *SipSession) ProcessRequestHeaders(trans *Transaction, sipmsg *Sip
 
 	// PRACK specific headers
 	if sipmsg.StartLine.Method == PRACK && !session.IsPRACKSupported {
-		system.LogWarning(system.LTSIPStack, fmt.Sprintf("UAS requesting 100rel although not offered - Call ID [%s]", session.CallID))
+		LogWarning(LTSIPStack, fmt.Sprintf("UAS requesting 100rel although not offered - Call ID [%s]", session.CallID))
 		hdrs.AddHeader(Warning, `399 sipclientgo "100rel was not offered, yet it was requested"`)
 	}
 
@@ -930,7 +928,7 @@ func (session *SipSession) UpdateContactRecordRouteBody(sipmsg *SipMessage) {
 		if !RMatch(hv, FQDNPort, &mtch) {
 			return false, hv, nil
 		}
-		prt := system.Str2Int[int](mtch[2])
+		prt := Str2Int[int](mtch[2])
 		prt = cmp.Or(prt, 5060)
 		ip := net.ParseIP(mtch[1])
 		if ip == nil {
@@ -975,13 +973,13 @@ func (session *SipSession) Send(tx *Transaction) {
 	if tx.SentMessage.IsRequest() && session.RemoteContactUDP != nil {
 		_, err := session.SIPUDPListenser.WriteToUDP(tx.SentMessage.Body.MessageBytes, session.RemoteContactUDP)
 		if err != nil {
-			system.LogError(system.LTSystem, "Failed to send message: "+err.Error())
+			LogError(LTSystem, "Failed to send message: "+err.Error())
 		}
 		return
 	}
 	_, err := session.SIPUDPListenser.WriteToUDP(tx.SentMessage.Body.MessageBytes, session.RemoteUDP)
 	if err != nil {
-		system.LogError(system.LTSystem, "Failed to send message: "+err.Error())
+		LogError(LTSystem, "Failed to send message: "+err.Error())
 	}
 }
 
@@ -1116,7 +1114,7 @@ func (ss *SipSession) TimerHandler(ttt TimerType) {
 
 func (ss *SipSession) StartInDialogueProbing() {
 	if InDialogueProbingSec == 0 {
-		system.LogWarning(system.LTConfiguration, "Probing duration is set to ZERO - Skipped")
+		LogWarning(LTConfiguration, "Probing duration is set to ZERO - Skipped")
 		return
 	}
 	ss.multiUseMutex.Lock()
@@ -1127,7 +1125,7 @@ func (ss *SipSession) StartInDialogueProbing() {
 
 func (ss *SipSession) StartMaxCallDuration() {
 	if MaxCallDurationSec == 0 {
-		system.LogWarning(system.LTConfiguration, "Max call duration is set to ZERO - Skipped")
+		LogWarning(LTConfiguration, "Max call duration is set to ZERO - Skipped")
 		return
 	}
 	ss.multiUseMutex.Lock()
