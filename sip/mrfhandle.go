@@ -711,7 +711,7 @@ func CallAction(ue *UserEquipment, callID, action string) {
 	switch action {
 	case ResumeAnswer:
 		if ses.Direction == INBOUND && ses.IsBeingEstablished() {
-			ses.AnswerChan <- true
+			ses.AnswerChan <- struct{}{}
 			return
 		}
 		if ses.IsEstablished() && ses.buildSDPOffer(false) {
