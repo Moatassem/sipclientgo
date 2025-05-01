@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"sipclientgo/global"
-	"sipclientgo/numtype"
 	"sipclientgo/system"
 	"slices"
 	"strings"
@@ -284,53 +283,6 @@ func (sipmsg *SipMessage) GetRegistrationData() (contact, ext, ruri, ipport stri
 	sipmsg.Headers.SetHeader(global.Expires, expires)
 	expiresInt = system.Str2Int[int](expires)
 	return
-}
-
-func (sipmsg *SipMessage) TranslateRM(ss *SipSession, tx *Transaction, nt numtype.NumberType, NewNumber string) {
-	if NewNumber == "" {
-		return
-	}
-	localsocket := system.GetUDPAddrFromConn(ss.SIPUDPListenser)
-	rep := fmt.Sprintf("${1}%s$2", NewNumber)
-
-	switch nt {
-	case numtype.CalledRURI:
-		sipmsg.StartLine.RUri = global.RReplaceNumberOnly(sipmsg.StartLine.RUri, rep)
-		sipmsg.StartLine.UserPart = NewNumber
-		ss.RemoteContactURI = sipmsg.StartLine.RUri
-	case numtype.CalledTo:
-		sipmsg.Headers.SetHeader(global.To, global.RReplaceNumberOnly(sipmsg.Headers.ValueHeader(global.To), rep))
-		ss.ToHeader = sipmsg.Headers.ValueHeader(global.To)
-		tx.To = ss.ToHeader
-	case numtype.CalledBoth:
-		sipmsg.StartLine.RUri = global.RReplaceNumberOnly(sipmsg.StartLine.RUri, rep)
-		sipmsg.StartLine.UserPart = NewNumber
-		ss.RemoteContactURI = sipmsg.StartLine.RUri
-
-		sipmsg.Headers.SetHeader(global.To, global.RReplaceNumberOnly(sipmsg.Headers.ValueHeader(global.To), rep))
-		ss.ToHeader = sipmsg.Headers.ValueHeader(global.To)
-		tx.To = ss.ToHeader
-	case numtype.CallingFrom:
-		sipmsg.Headers.SetHeader(global.From, global.RReplaceNumberOnly(sipmsg.Headers.ValueHeader(global.From), rep))
-		ss.FromHeader = sipmsg.Headers.ValueHeader(global.From)
-		tx.From = ss.FromHeader
-	case numtype.CallingPAI:
-		if sipmsg.Headers.HeaderExists(global.P_Asserted_Identity.String()) {
-			sipmsg.Headers.SetHeader(global.P_Asserted_Identity, global.RReplaceNumberOnly(sipmsg.Headers.ValueHeader(global.P_Asserted_Identity), rep))
-		} else {
-			sipmsg.Headers.SetHeader(global.P_Asserted_Identity, fmt.Sprintf("<sip:%s@%s;user=phone>", NewNumber, localsocket.IP))
-		}
-	case numtype.CallingBoth:
-		if sipmsg.Headers.HeaderExists(global.P_Asserted_Identity.String()) {
-			sipmsg.Headers.SetHeader(global.P_Asserted_Identity, global.RReplaceNumberOnly(sipmsg.Headers.ValueHeader(global.P_Asserted_Identity), rep))
-		} else {
-			sipmsg.Headers.SetHeader(global.P_Asserted_Identity, fmt.Sprintf("<sip:%s@%s;user=phone>", NewNumber, localsocket.IP))
-		}
-
-		sipmsg.Headers.SetHeader(global.From, global.RReplaceNumberOnly(sipmsg.Headers.ValueHeader(global.From), rep))
-		ss.FromHeader = sipmsg.Headers.ValueHeader(global.From)
-		tx.From = ss.FromHeader
-	}
 }
 
 func (sipmsg *SipMessage) PrepareMessageBytes(ss *SipSession) {

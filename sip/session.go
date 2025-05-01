@@ -23,14 +23,17 @@ type SipSession struct {
 	state     state.SessionState
 	stateLock sync.RWMutex
 
-	CallID           string
-	FromHeader       string
-	ToHeader         string
-	FromTag          string
-	ToTag            string
+	CallID     string
+	FromHeader string
+	ToHeader   string
+	FromTag    string
+	ToTag      string
+
+	RemoteURI        string
 	RemoteContactURI string
-	RecordRouteURI   string
-	RecordRoutes     []string
+
+	RecordRouteURI string
+	RecordRoutes   []string
 
 	MRFRepo *MRFRepo
 
@@ -111,7 +114,8 @@ func NewSS(dir Direction) *SipSession {
 	return ss
 }
 
-func NewSIPSession(sipmsg *SipMessage) *SipSession { //used in inbound sessions
+// used in inbound sessions
+func NewSIPSession(sipmsg *SipMessage) *SipSession {
 	ss := NewSS(INBOUND)
 	ss.CallID = sipmsg.CallID
 	return ss
@@ -374,6 +378,144 @@ func (session *SipSession) SendRequestDetailed(rqstpk RequestPack, trans *Transa
 	session.SendSTMessage(newtrans)
 }
 
+func (session *SipSession) PrepareRequestHeaders(trans *Transaction, rqstpk RequestPack, sipmsg *SipMessage) {
+	hdrs := NewSHsPointer(true)
+	sipmsg.Headers = hdrs
+
+	localsocket := GetUDPAddrFromConn(session.SIPUDPListenser)
+
+	sl := sipmsg.StartLine
+	if trans.UseRemoteURI {
+		sl.RUri = session.RemoteURI
+	} else {
+		sl.RUri = session.RemoteContactURI
+	}
+
+	// Set To and From headers depending on session direction
+	if session.Direction == OUTBOUND {
+		hdrs.SetHeader(To, session.ToHeader)
+		hdrs.SetHeader(From, session.FromHeader)
+	} else {
+		hdrs.SetHeader(To, session.FromHeader)
+		hdrs.SetHeader(From, session.ToHeader)
+	}
+
+	// Add RAck header if the request type is PRACK
+	if rqstpk.Method == PRACK {
+		hdrs.SetHeader(RAck, trans.RAck)
+	}
+
+	// Max-Forwards
+	var maxFwds int
+	if rqstpk.Max70 || trans.ResetMF {
+		maxFwds = 70
+	} else {
+		if trans.LinkedTransaction == nil {
+			maxFwds = 70
+		} else {
+			if rqstpk.Method == ACK || rqstpk.Method == CANCEL {
+				maxFwds = trans.LinkedTransaction.RequestMessage.MaxFwds
+			} else {
+				maxFwds = trans.LinkedTransaction.RequestMessage.MaxFwds - 1
+			}
+		}
+	}
+	hdrs.SetHeader(Max_Forwards, Int2Str(maxFwds))
+
+	if rqstpk.Method == ReINVITE {
+		sipmsg.MaxFwds = maxFwds
+	}
+
+	if session.Direction == INBOUND {
+		hdrs.AddHeaderValues(Route, session.RecordRoutes)
+	} else {
+		hdrs.AddHeaderValues(Route, Reverse(session.RecordRoutes))
+	}
+
+	// Add Contact, Call-ID, and Via headers
+	hdrs.SetHeader(Contact, GenerateContact(localsocket))
+	hdrs.SetHeader(Call_ID, session.CallID)
+	hdrs.AddHeader(Via, fmt.Sprintf("%s;branch=%s", GenerateViaWithoutBranch(session.SIPUDPListenser), trans.ViaBranch))
+}
+
+func (session *SipSession) ProcessRequestHeaders(trans *Transaction, sipmsg *SipMessage, rqstpk RequestPack, msgBody MessageBody) {
+	hdrs := sipmsg.Headers
+
+	// Add Date header
+	hdrs.SetHeader(Date, time.Now().UTC().Format(DicTFs[Signaling]))
+
+	// CSeq header
+	hdrs.SetHeader(CSeq, fmt.Sprintf("%d %s", trans.CSeq, sipmsg.StartLine.Method.String()))
+
+	// Add custom headers if any
+	if hmap := rqstpk.CustomHeaders.InternalMap(); hmap != nil {
+		for k, vs := range hmap {
+			for _, v := range vs {
+				hdrs.Add(k, v)
+			}
+		}
+	}
+
+	// Add Reason header for CANCEL or BYE requests
+	if (sipmsg.StartLine.Method == CANCEL || sipmsg.StartLine.Method == BYE) && !hdrs.HeaderExists("Reason") {
+		hdrs.AddHeader(Reason, "Q.850;cause=16")
+	}
+
+	// Set Content-Type and Content-Length based on the message body
+	sipmsg.Body = &msgBody
+
+	// // INVITE specific headers
+	// if sipmsg.StartLine.Method == INVITE {
+	// 	trans.RequestMessage = sipmsg
+	// 	trans.SentMessage = sipmsg
+	// 	session.CurrentRemoteContactURI = sipmsg.StartLine.RUri
+	// 	if session.IsPRACKSupported {
+	// 		hdrs.AddHeader(Supported, "100rel")
+	// 	}
+	// }
+
+	// NOTIFY specific headers
+	// if rqstpk.RequestType == NOTIFY {
+	// 	if msgBody.MyBodyType == SIPFragment {
+	// 		hdrs.Add("Event", session.Transactions.GenerateReferHeaderForNotifyFromLastREFERCSeqSYNC())
+	// 		if msgBody.NotifyResponse < 200 {
+	// 			hdrs.Add("Subscription-State", "pending")
+	// 		} else {
+	// 			hdrs.Add("Subscription-State", "terminated;reason=noresource")
+	// 		}
+	// 	} else if msgBody.BodyType == SimpleMsgSummary {
+	// 		hdrs.Add("Event", session.InitialRequestMessage.Headers.ValueHeader(Event))
+	// 		if msgBody.SubscriptionStatusReason == SubsStateReasonNone {
+	// 			hdrs.Add("Subscription-State", "active")
+	// 			hdrs.Add("Subscription-Expires", fmt.Sprintf("%d", session.MyVoiceMailBox.SubscriptionExpires.Format(DicTFs[TimeFormatSignaling])))
+	// 		} else {
+	// 			hdrs.Add("Subscription-State", fmt.Sprintf("terminated;reason=%s", msgBody.SubscriptionStatusReason))
+	// 		}
+	// 		hdrs.Add("Contact", fmt.Sprintf("<%s>", session.MyVoiceMailBox.URI))
+	// 	} else if msgBody.BodyType == DTMFRelay {
+	// 		hdrs.Add("Event", "telephone-event")
+	// 	}
+	// }
+
+	// PRACK specific headers
+	if sipmsg.StartLine.Method == PRACK && !session.IsPRACKSupported {
+		LogWarning(LTSIPStack, fmt.Sprintf("UAS requesting 100rel although not offered - Call ID [%s]", session.CallID))
+		hdrs.AddHeader(Warning, `399 sipclientgo "100rel was not offered, yet it was requested"`)
+	}
+
+	// ReINVITE specific headers
+	// if sipmsg.StartLine.Method == ReINVITE {
+	// 	hdrs.Add("P-Early-Media", "")
+	// 	hdrs.Add("Subject", "")
+	// 	sipmsg.StartLine.Method = INVITE
+	// }
+
+	// OPTIONS specific headers
+	// if sipmsg.StartLine.Method == OPTIONS {
+	// 	hdrs.Add("Accept", "")
+	// }
+}
+
 func (session *SipSession) CreateSARequest(rqstpk RequestPack, body MessageBody) *Transaction {
 	switch rqstpk.Method {
 	case OPTIONS:
@@ -424,6 +566,7 @@ func (session *SipSession) BuildSARequestHeaders(st *Transaction, rqstpk Request
 		remoteIP = sl.HostPart
 	}
 	sl.BuildRURI()
+	session.RemoteURI = sl.RUri
 	session.RemoteContactURI = sl.RUri
 
 	// Set headers
@@ -740,140 +883,6 @@ func (session *SipSession) GetLastUnACKedINVSYNC(dir Direction) *Transaction {
 	return session.GetLastUnACKedINV(dir)
 }
 
-func (session *SipSession) PrepareRequestHeaders(trans *Transaction, rqstpk RequestPack, sipmsg *SipMessage) {
-	hdrs := NewSHsPointer(true)
-	sipmsg.Headers = hdrs
-
-	localsocket := GetUDPAddrFromConn(session.SIPUDPListenser)
-
-	sl := sipmsg.StartLine
-	sl.RUri = session.RemoteContactURI
-
-	// Set To and From headers depending on session direction
-	if session.Direction == OUTBOUND {
-		hdrs.SetHeader(To, session.ToHeader)
-		hdrs.SetHeader(From, session.FromHeader)
-	} else {
-		hdrs.SetHeader(To, session.FromHeader)
-		hdrs.SetHeader(From, session.ToHeader)
-	}
-
-	// Add RAck header if the request type is PRACK
-	if rqstpk.Method == PRACK {
-		hdrs.SetHeader(RAck, trans.RAck)
-	}
-
-	// Max-Forwards
-	var maxFwds int
-	if rqstpk.Max70 || trans.ResetMF {
-		maxFwds = 70
-	} else {
-		if trans.LinkedTransaction == nil {
-			maxFwds = 70
-		} else {
-			if rqstpk.Method == ACK || rqstpk.Method == CANCEL {
-				maxFwds = trans.LinkedTransaction.RequestMessage.MaxFwds
-			} else {
-				maxFwds = trans.LinkedTransaction.RequestMessage.MaxFwds - 1
-			}
-		}
-	}
-	hdrs.SetHeader(Max_Forwards, Int2Str(maxFwds))
-
-	if rqstpk.Method == ReINVITE {
-		sipmsg.MaxFwds = maxFwds
-	}
-
-	if session.Direction == INBOUND {
-		hdrs.AddHeaderValues(Route, session.RecordRoutes)
-	} else {
-		hdrs.AddHeaderValues(Route, Reverse(session.RecordRoutes))
-	}
-
-	// Add Contact, Call-ID, and Via headers
-	hdrs.SetHeader(Contact, GenerateContact(localsocket))
-	hdrs.SetHeader(Call_ID, session.CallID)
-	hdrs.AddHeader(Via, fmt.Sprintf("%s;branch=%s", GenerateViaWithoutBranch(session.SIPUDPListenser), trans.ViaBranch))
-}
-
-func (session *SipSession) ProcessRequestHeaders(trans *Transaction, sipmsg *SipMessage, rqstpk RequestPack, msgBody MessageBody) {
-	hdrs := sipmsg.Headers
-
-	// Add Date header
-	hdrs.SetHeader(Date, time.Now().UTC().Format(DicTFs[Signaling]))
-
-	// CSeq header
-	hdrs.SetHeader(CSeq, fmt.Sprintf("%d %s", trans.CSeq, sipmsg.StartLine.Method.String()))
-
-	// Add custom headers if any
-	if hmap := rqstpk.CustomHeaders.InternalMap(); hmap != nil {
-		for k, vs := range hmap {
-			for _, v := range vs {
-				hdrs.Add(k, v)
-			}
-		}
-	}
-
-	// Add Reason header for CANCEL or BYE requests
-	if (sipmsg.StartLine.Method == CANCEL || sipmsg.StartLine.Method == BYE) && !hdrs.HeaderExists("Reason") {
-		hdrs.AddHeader(Reason, "Q.850;cause=16")
-	}
-
-	// Set Content-Type and Content-Length based on the message body
-	sipmsg.Body = &msgBody
-
-	// INVITE specific headers
-	if sipmsg.StartLine.Method == INVITE {
-		trans.RequestMessage = sipmsg
-		trans.SentMessage = sipmsg
-		session.RemoteContactURI = sipmsg.StartLine.RUri
-		if session.IsPRACKSupported {
-			hdrs.AddHeader(Supported, "100rel")
-		}
-	}
-
-	// NOTIFY specific headers
-	// if rqstpk.RequestType == NOTIFY {
-	// 	if msgBody.MyBodyType == SIPFragment {
-	// 		hdrs.Add("Event", session.Transactions.GenerateReferHeaderForNotifyFromLastREFERCSeqSYNC())
-	// 		if msgBody.NotifyResponse < 200 {
-	// 			hdrs.Add("Subscription-State", "pending")
-	// 		} else {
-	// 			hdrs.Add("Subscription-State", "terminated;reason=noresource")
-	// 		}
-	// 	} else if msgBody.BodyType == SimpleMsgSummary {
-	// 		hdrs.Add("Event", session.InitialRequestMessage.Headers.ValueHeader(Event))
-	// 		if msgBody.SubscriptionStatusReason == SubsStateReasonNone {
-	// 			hdrs.Add("Subscription-State", "active")
-	// 			hdrs.Add("Subscription-Expires", fmt.Sprintf("%d", session.MyVoiceMailBox.SubscriptionExpires.Format(DicTFs[TimeFormatSignaling])))
-	// 		} else {
-	// 			hdrs.Add("Subscription-State", fmt.Sprintf("terminated;reason=%s", msgBody.SubscriptionStatusReason))
-	// 		}
-	// 		hdrs.Add("Contact", fmt.Sprintf("<%s>", session.MyVoiceMailBox.URI))
-	// 	} else if msgBody.BodyType == DTMFRelay {
-	// 		hdrs.Add("Event", "telephone-event")
-	// 	}
-	// }
-
-	// PRACK specific headers
-	if sipmsg.StartLine.Method == PRACK && !session.IsPRACKSupported {
-		LogWarning(LTSIPStack, fmt.Sprintf("UAS requesting 100rel although not offered - Call ID [%s]", session.CallID))
-		hdrs.AddHeader(Warning, `399 sipclientgo "100rel was not offered, yet it was requested"`)
-	}
-
-	// ReINVITE specific headers
-	// if sipmsg.StartLine.Method == ReINVITE {
-	// 	hdrs.Add("P-Early-Media", "")
-	// 	hdrs.Add("Subject", "")
-	// 	sipmsg.StartLine.Method = INVITE
-	// }
-
-	// OPTIONS specific headers
-	// if sipmsg.StartLine.Method == OPTIONS {
-	// 	hdrs.Add("Accept", "")
-	// }
-}
-
 func (session *SipSession) Received1xx() bool {
 	trans := session.GetFirstTransaction()
 	return trans != nil && trans.Any1xxSYNC()
@@ -970,7 +979,7 @@ func (session *SipSession) Send(tx *Transaction) {
 	if len(tx.SentMessage.Body.MessageBytes) == 0 {
 		tx.SentMessage.PrepareMessageBytes(session)
 	}
-	if tx.SentMessage.IsRequest() && session.RemoteContactUDP != nil {
+	if !tx.UseRemoteURI && tx.SentMessage.IsRequest() && session.RemoteContactUDP != nil {
 		_, err := session.SIPUDPListenser.WriteToUDP(tx.SentMessage.Body.MessageBytes, session.RemoteContactUDP)
 		if err != nil {
 			LogError(LTSystem, "Failed to send message: "+err.Error())

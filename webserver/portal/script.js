@@ -218,6 +218,7 @@ refresh.addEventListener('click', event => {
 
 
 function editRecord(row) {
+    recordForm.parentElement.open = true
     const cells = row.cells;
     document.getElementById('enabled').value = cells[1].textContent.toLowerCase();
     document.getElementById('imsi').value = cells[2].textContent;

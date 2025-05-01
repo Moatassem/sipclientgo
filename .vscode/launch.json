@@ -12,7 +12,7 @@
       "env": {
         // "server_ipv4": "192.168.1.2",
         // "sip_udp_port": "5060",
-        "http_port": "8081",
+        "http_port": "8088",
         "media_dir": ".\\audio"
         // "pcscf_udp_socket": "172.20.40.51:5060",
         // "epc_domain": "epc.mnc001.mcc001.3gppnetwork.org",

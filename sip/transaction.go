@@ -29,6 +29,8 @@ type Transaction struct {
 	IsProbing bool
 	ResetMF   bool //to be used or removed
 
+	UseRemoteURI bool
+
 	RequestMessage *SipMessage
 
 	LinkedTransaction *Transaction
@@ -145,8 +147,9 @@ func (trans *Transaction) CreateCANCELST() *Transaction {
 		To:                trans.To,
 		From:              trans.From,
 		ViaBranch:         trans.ViaBranch,
+		UseRemoteURI:      true,
 	}
-	// Link the INVITE transaction to the new CANCEL transaction
+	// Link the INVITE transaction to the its CANCEL transaction
 	trans.LinkedTransaction = st
 	return st
 }
@@ -161,7 +164,7 @@ func (transaction *Transaction) CreateACKST() *Transaction {
 	}
 
 	// Set the ViaBranch for the ACK transaction
-	if transaction.RequireSameViaBranch() {
+	if st.UseRemoteURI = transaction.RequireSameViaBranch(); st.UseRemoteURI {
 		st.ViaBranch = transaction.ViaBranch
 	} else {
 		st.ViaBranch = guid.NewViaBranch()
