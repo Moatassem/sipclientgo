@@ -5,6 +5,7 @@ import (
 	"cmp"
 	"encoding/hex"
 	"fmt"
+	"net"
 	"sipclientgo/global"
 	"sipclientgo/system"
 	"slices"
@@ -27,6 +28,8 @@ type SipMessage struct {
 	FromTag   string
 	ToTag     string
 	ViaBranch string
+
+	ViaUdpAddr *net.UDPAddr
 
 	RCURI string
 	RRURI string

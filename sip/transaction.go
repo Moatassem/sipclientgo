@@ -2,6 +2,7 @@ package sip
 
 import (
 	"fmt"
+	"net"
 	"sipclientgo/global"
 	"sipclientgo/guid"
 	"sipclientgo/system"
@@ -29,7 +30,8 @@ type Transaction struct {
 	IsProbing bool
 	ResetMF   bool //to be used or removed
 
-	UseRemoteURI bool
+	UseRemoteURI bool // to keep using the original RURI & socket for CANCEL and ACK on non-2xx
+	ViaUdpAddr   *net.UDPAddr
 
 	RequestMessage *SipMessage
 
@@ -63,6 +65,7 @@ func NewSIPTransaction_RT(RM *SipMessage, LT *Transaction, ss *SipSession) *Tran
 	trans.Method = RM.StartLine.Method
 	trans.RequestMessage = RM
 	trans.Direction = global.INBOUND
+	trans.ViaUdpAddr = RM.ViaUdpAddr
 	trans.CSeq = RM.CSeqNum
 	trans.ViaBranch = RM.ViaBranch
 	trans.LinkedTransaction = LT

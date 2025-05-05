@@ -85,6 +85,9 @@ func processPDU(payload []byte) (*SipMessage, []byte, error) {
 
 	//headers parsing
 	// #nosec G115: Ignoring integer overflow conversion gosec error - payload is always under limit of uint16
+
+	isViaTried := false
+
 	for i := lnIdx; i < uint16(len(msglines)) && msglines[i] != ""; i++ {
 		matches := DicFieldRegEx[FullHeader].FindStringSubmatch(msglines[i])
 		if matches != nil {
@@ -148,17 +151,22 @@ func processPDU(payload []byte) (*SipMessage, []byte, error) {
 					}
 				}
 			case Via.LowerCaseString():
-				via := DicFieldRegEx[ViaBranchPattern].FindStringSubmatch(value)
-				if via != nil {
-					if sipmsg.ViaBranch == "" {
-						sipmsg.ViaBranch = via[1]
+				if !isViaTried {
+					isViaTried = true
+					via := DicFieldRegEx[ViaBranchPattern].FindStringSubmatch(value)
+					if via == nil {
+						break
 					}
+					skt := DicFieldRegEx[ViaIPv4Socket].FindStringSubmatch(value)
+					if len(skt) > 0 {
+						sipmsg.ViaUdpAddr, _ = system.BuildUdpAddrSocket(skt[2]+":"+skt[3], SipPort)
+					}
+					sipmsg.ViaBranch = via[1]
 					if !strings.HasPrefix(via[1], MagicCookie) {
-						system.LogWarning(system.LTSIPStack, fmt.Sprintf("Received message [%v] having non-RFC3261 Via branch [%v]", startLine.Method.String(), via[1]))
-						fmt.Println(string(payload[:_dblCrLfIdx]))
+						fmt.Printf("Received message [%s] having non-RFC3261 Via branch [%s]", startLine.Method.String(), via[1])
 					}
 					if len(via[1]) <= len(MagicCookie) {
-						system.LogWarning(system.LTSIPStack, fmt.Sprintf("Received message [%v] having too short Via branch [%v]", startLine.Method.String(), via[1]))
+						fmt.Printf("Received message [%s] having too short Via branch [%s]", startLine.Method.String(), via[1])
 					}
 				}
 			}
@@ -370,7 +378,7 @@ func sipStack(sipmsg *SipMessage, ss *SipSession, newSesType NewSessionType) {
 	} else {
 		trans = ss.AddIncomingResponse(sipmsg)
 	}
-	
+
 	if trans == nil {
 		ss.DropMe()
 		return

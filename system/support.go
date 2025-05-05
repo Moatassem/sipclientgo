@@ -1,6 +1,7 @@
 package system
 
 import (
+	"cmp"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -13,6 +14,10 @@ import (
 	"net"
 	"strings"
 	"unicode/utf8"
+)
+
+const (
+	MaxPort int = 65535
 )
 
 // ============================================================
@@ -125,6 +130,23 @@ func GetUDPortFromConn(conn *net.UDPConn) int {
 
 func BuildUDPAddr(ip string, prt int) (*net.UDPAddr, error) {
 	return net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", ip, prt))
+}
+
+func BuildUdpAddrSocket(ipsocket string, defaultport int) (*net.UDPAddr, bool) {
+	part1, part2, ok := strings.Cut(ipsocket, ":")
+	var prt int
+	if ok {
+		prt = Str2Int[int](part2)
+		if prt <= 0 || prt > MaxPort {
+			return nil, false
+		}
+	}
+	prt = cmp.Or(prt, defaultport)
+	ip := net.ParseIP(part1)
+	if ip == nil {
+		return nil, false
+	}
+	return &net.UDPAddr{IP: ip, Port: prt}, true
 }
 
 func BuildUDPAddrFromSocketString(sckt string) (*net.UDPAddr, error) {

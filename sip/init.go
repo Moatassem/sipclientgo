@@ -5,6 +5,10 @@ import (
 	"sipclientgo/global"
 )
 
+const (
+	SipPort int = 5060
+)
+
 func StartServer() {
 	fmt.Print("Initializing Global Parameters...")
 	global.InitializeEngine()

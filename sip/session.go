@@ -31,9 +31,10 @@ type SipSession struct {
 
 	RemoteURI        string
 	RemoteContactURI string
+	RemoteUDP        *net.UDPAddr
+	RemoteContactUDP *net.UDPAddr
 
-	RecordRouteURI string
-	RecordRoutes   []string
+	RecordRoutes []string
 
 	MRFRepo *MRFRepo
 
@@ -52,12 +53,9 @@ type SipSession struct {
 	ReferSubscription bool
 	Relayed18xNotify  []int
 
-	RemoteUDP        *net.UDPAddr
-	RemoteContactUDP *net.UDPAddr
-	RecordRouteUDP   *net.UDPAddr
-	SIPUDPListenser  *net.UDPConn
-	RemoteUserAgent  *SipUdpUserAgent
-	UserEquipment    *UserEquipment
+	SIPUDPListenser *net.UDPConn
+	RemoteUserAgent *SipUdpUserAgent
+	UserEquipment   *UserEquipment
 
 	RemoteMedia    *net.UDPAddr
 	MediaListener  *net.UDPConn
@@ -947,17 +945,12 @@ func (session *SipSession) UpdateContactRecordRouteBody(sipmsg *SipMessage) {
 	}
 
 	ok1, RCURI, RCUDP := parseURI(sipmsg.RCURI, session.RemoteContactURI)
-	// ok2, RRURI, RRUDP := parseURI(sipmsg.RRURI, session.RecordRouteURI)
 	if ok1 {
 		session.RemoteContactURI = RCURI
 		if len(session.RecordRoutes) == 0 {
 			session.RemoteContactUDP = RCUDP
 		}
 	}
-	// if ok2 {
-	// 	session.RecordRouteURI = RRURI
-	// 	session.RecordRouteUDP = RRUDP
-	// }
 }
 
 func (session *SipSession) SendSTMessage(st *Transaction) {
@@ -979,14 +972,28 @@ func (session *SipSession) Send(tx *Transaction) {
 	if len(tx.SentMessage.Body.MessageBytes) == 0 {
 		tx.SentMessage.PrepareMessageBytes(session)
 	}
-	if !tx.UseRemoteURI && tx.SentMessage.IsRequest() && session.RemoteContactUDP != nil {
-		_, err := session.SIPUDPListenser.WriteToUDP(tx.SentMessage.Body.MessageBytes, session.RemoteContactUDP)
-		if err != nil {
-			LogError(LTSystem, "Failed to send message: "+err.Error())
+
+	// response
+	if tx.SentMessage.IsResponse() {
+		if tx.ViaUdpAddr != nil {
+			session.sendmessage(tx.SentMessage, tx.ViaUdpAddr)
+		} else {
+			session.sendmessage(tx.SentMessage, session.RemoteUDP)
 		}
 		return
 	}
-	_, err := session.SIPUDPListenser.WriteToUDP(tx.SentMessage.Body.MessageBytes, session.RemoteUDP)
+
+	// request
+	if !tx.UseRemoteURI && session.RemoteContactUDP != nil {
+		session.sendmessage(tx.SentMessage, session.RemoteContactUDP)
+		return
+	}
+
+	session.sendmessage(tx.SentMessage, session.RemoteUDP)
+}
+
+func (session *SipSession) sendmessage(msg *SipMessage, rmt *net.UDPAddr) {
+	_, err := session.SIPUDPListenser.WriteToUDP(msg.Body.MessageBytes, rmt)
 	if err != nil {
 		LogError(LTSystem, "Failed to send message: "+err.Error())
 	}
