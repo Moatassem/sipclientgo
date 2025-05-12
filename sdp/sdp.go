@@ -152,7 +152,7 @@ func (s *Session) GetEffectivePTime() string {
 
 func (s *Session) GetEffectiveConnection(media *Media) string {
 	var ipv4 string
-	for i := 0; i < len(media.Connection); i++ {
+	for i := range media.Connection {
 		ipv4 = media.Connection[i].Address
 		if ipv4 != "" {
 			return ipv4
@@ -162,7 +162,7 @@ func (s *Session) GetEffectiveConnection(media *Media) string {
 }
 
 func (s *Session) IsT38Image() bool {
-	for i := 0; i < len(s.Media); i++ {
+	for i := range s.Media {
 		media := s.Media[i]
 		if media.Type == Image && media.Port > 0 && media.Proto == Udptl && media.FormatDescr == "t38" {
 			return true
