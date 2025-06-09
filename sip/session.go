@@ -1108,21 +1108,32 @@ func (ss *SipSession) StopNoTimers() {
 	ss.StopTimer(NoAnswer)
 }
 
-func (ss *SipSession) TimerHandler(ttt TimerType) {
-	tmr := ss.getTimerPointer(ttt)
+func (ss *SipSession) killTimers() {
+	if ss.probingTicker != nil {
+		ss.probingTicker.Stop()
+		ss.probingTicker = nil
+	}
+	if ss.maxDurationTimer != nil {
+		ss.maxDurationTimer.Stop()
+		ss.maxDurationTimer = nil
+	}
+}
+
+func (ss *SipSession) TimerHandler(tt TimerType) {
+	tmr := ss.getTimerPointer(tt)
 	select {
 	case <-tmr.DoneCh:
 		ss.multiUseMutex.Lock()
 		defer ss.multiUseMutex.Unlock()
-		ss.setTimerPointer(ttt, nil)
+		ss.setTimerPointer(tt, nil)
 		return
 	case <-tmr.Tmr.C:
 	}
 	ss.multiUseMutex.Lock()
 	close(tmr.DoneCh)
-	ss.setTimerPointer(ttt, nil)
+	ss.setTimerPointer(tt, nil)
 	ss.multiUseMutex.Unlock()
-	ss.CancelMe(q850.NoAnswerFromUser, ttt.Details())
+	ss.CancelMe(q850.NoAnswerFromUser, tt.Details())
 	ss.logSessData(nil, utcNow())
 }
 
@@ -1306,6 +1317,7 @@ func (session *SipSession) DropMe() {
 	close(session.maxDprobDoneChan)
 	close(session.AnswerChan)
 	close(session.rtpChan)
+	session.killTimers()
 	session.UserEquipment.SesMap.Delete(session.CallID)
 }
 
