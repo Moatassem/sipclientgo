@@ -10,9 +10,10 @@ import (
 	"sipclientgo/guid"
 	"sipclientgo/q850"
 	"sipclientgo/rtp"
-	"sipclientgo/sdp"
 	"sipclientgo/sip/state"
 	"sipclientgo/sip/status"
+
+	"github.com/Moatassem/sdp"
 
 	"net"
 	"sipclientgo/system"

@@ -9,12 +9,14 @@ import (
 	. "sipclientgo/global"
 	"sipclientgo/guid"
 	"sipclientgo/q850"
-	"sipclientgo/sdp"
+
 	"sipclientgo/sip/mode"
 	"sipclientgo/sip/state"
 	. "sipclientgo/system"
 	"sync"
 	"time"
+
+	"github.com/Moatassem/sdp"
 )
 
 type SipSession struct {

@@ -2,7 +2,8 @@ package sip
 
 import (
 	"sipclientgo/global"
-	"sipclientgo/sdp"
+
+	"github.com/Moatassem/sdp"
 )
 
 type MessageBody struct {
