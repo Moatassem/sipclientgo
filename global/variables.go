@@ -18,17 +18,15 @@ const (
 
 	DefaultHttpPort int = 8080
 
-	RTPHeaderSize  int = 12
-	RTPPayloadSize int = 160
+	RTPHeaderSize  int = 12  // bytes
+	RTPPayloadSize int = 160 // bytes (20ms of 8kHz PCM)
 	MediaStartPort int = 7001
 	MediaEndPort   int = 57000
 
 	PacketizationTime int = 20    // ms
-	PayloadSize       int = 160   // bytes
 	SamplingRate          = 8000  // Hz
 	PcmSamplingRate       = 16000 // Hz
 	DTMFPacketsCount  int = 3
-	RTPHeadersSize    int = 12 //bytes
 
 	T1Timer              int    = 500
 	ReTXCount            int    = 5

@@ -244,7 +244,7 @@ func (ss *SipSession) buildSDPAnswer(sipmsg *SipMessage) (sipcode, q850code int,
 	ss.WithTeleEvents = dtmfFormat != nil
 
 	if !ss.WithTeleEvents {
-		ss.audioBytes = make([]byte, 0, DTMFPacketsCount*PayloadSize)
+		ss.audioBytes = make([]byte, 0, DTMFPacketsCount*RTPPayloadSize)
 	}
 
 	return
@@ -304,7 +304,7 @@ func (ss *SipSession) mediaReceiver() {
 		}
 
 		bytes := (*buf)[:n]
-		payload := bytes[RTPHeadersSize:]
+		payload := bytes[RTPHeaderSize:]
 
 		if ss.WithTeleEvents {
 			if n == 16 { // TODO check if no RFC 4733 is negotiated - transcode InBand DTMF into teleEvents
@@ -322,7 +322,7 @@ func (ss *SipSession) mediaReceiver() {
 				}
 			}
 		} else {
-			if n == RTPHeadersSize+PayloadSize {
+			if n == RTPHeaderSize+RTPPayloadSize {
 				b1 := bytes[1]
 
 				if b1 >= 128 {

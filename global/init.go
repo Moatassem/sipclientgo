@@ -21,10 +21,10 @@ func InitializeEngine() {
 	dtmf.Initialize(SamplingRate)
 }
 
-func newSyncPool(bsz, csz int) *sync.Pool {
+func newSyncPool(sz, cap int) *sync.Pool {
 	return &sync.Pool{
 		New: func() any {
-			lst := make([]byte, bsz, csz)
+			lst := make([]byte, sz, cap)
 			return &lst
 		},
 	}
