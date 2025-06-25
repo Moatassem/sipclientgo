@@ -293,6 +293,7 @@ func (sipmsg *SipMessage) PrepareMessageBytes(ss *SipSession) {
 	var headers []string
 
 	byteschan := make(chan []byte)
+	defer close(byteschan)
 
 	go func(bc chan<- []byte) {
 		var bb2 bytes.Buffer
