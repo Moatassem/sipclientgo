@@ -3,6 +3,7 @@ package sip
 import (
 	"encoding/binary"
 	"fmt"
+	"maps"
 	"math"
 	"regexp"
 	"sipclientgo/dtmf"
@@ -622,7 +623,8 @@ func RegisterMe(ue *UserEquipment, wwwauth string) {
 		auths := ParseWWWAuthenticateOptimized(wwwauth)
 		author := computeAuthorizationHeader(ImsDomain, auths[0].Params["nonce"], REGISTER.String(), "00000001", ue)
 		hdrs.AddHeader(Authorization, author)
-		ue.Authorization = author
+		ue.RegAuth = author
+		ue.InvAuth = computeAuthorizationHeader(ImsDomain, auths[0].Params["nonce"], INVITE.String(), "00000001", ue)
 	}
 
 	trans := ss.CreateSARequest(RequestPack{Method: REGISTER, Max70: true, RUriUP: ue.Imsi, FromUP: ue.Imsi, CustomHeaders: hdrs}, EmptyBody())
@@ -654,7 +656,7 @@ func UnregisterMe(ue *UserEquipment, wwwauth string) {
 		auths := ParseWWWAuthenticateOptimized(wwwauth)
 		author := computeAuthorizationHeader(ImsDomain, auths[0].Params["nonce"], REGISTER.String(), "00000001", ue)
 		hdrs.AddHeader(Authorization, author)
-		ue.Authorization = author
+		ue.RegAuth = author
 	}
 
 	trans := ss.CreateSARequest(RequestPack{Method: REGISTER, Max70: true, RUriUP: ue.Imsi, FromUP: ue.Imsi, CustomHeaders: hdrs}, EmptyBody())
@@ -681,7 +683,7 @@ func CallViaUE(ue *UserEquipment, cdpn string) {
 	hdrs.AddHeader(Supported, "path")
 	hdrs.AddHeader(Contact, fmt.Sprintf(`<sip:%s@%s>;+g.3gpp.icsi-ref="urn:Aurn-7:3gpp-service.ims.icsi.mmtel";+g.3gpp.smsip;video;+sip.instance="<urn:gsma:imei:86728703-952237-0>";+g.3gpp.accesstype="wired"`, ue.Imsi, system.GetUDPAddrStringFromConn(ue.UDPListener)))
 
-	hdrs.AddHeader(Authorization, ue.Authorization)
+	hdrs.AddHeader(Authorization, ue.InvAuth)
 
 	ss.initMediaParameters()
 	ss.buildSDPOffer(false)
@@ -835,9 +837,7 @@ func ParseWWWAuthenticateOptimized(header string) []AuthScheme {
 			})
 		} else if len(schemes) > 0 {
 			currentScheme := &schemes[len(schemes)-1]
-			for key, value := range extractParams(part, paramRegex) {
-				currentScheme.Params[key] = value
-			}
+			maps.Copy(currentScheme.Params, extractParams(part, paramRegex))
 		}
 	}
 

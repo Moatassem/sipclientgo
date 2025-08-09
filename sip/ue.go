@@ -14,16 +14,17 @@ var UEs *UserEquipments = NewUserEquipments()
 type SessionsMap = *ConcurrentMapMutex[SipSession]
 
 type UserEquipment struct {
-	Enabled       bool        `json:"enabled"`
-	Imsi          string      `json:"imsi"`
-	Ki            string      `json:"ki"`
-	Opc           string      `json:"opc"`
-	MsIsdn        string      `json:"msisdn"`
-	RegStatus     string      `json:"regStatus"`
-	Expires       string      `json:"expires"`
-	UdpPort       int         `json:"udpPort"`
-	Authorization string      `json:"-"`
-	SesMap        SessionsMap `json:"-"`
+	Enabled   bool        `json:"enabled"`
+	Imsi      string      `json:"imsi"`
+	Ki        string      `json:"ki"`
+	Opc       string      `json:"opc"`
+	MsIsdn    string      `json:"msisdn"`
+	RegStatus string      `json:"regStatus"`
+	Expires   string      `json:"expires"`
+	UdpPort   int         `json:"udpPort"`
+	RegAuth   string      `json:"-"`
+	InvAuth   string      `json:"-"`
+	SesMap    SessionsMap `json:"-"`
 
 	UDPListener *net.UDPConn `json:"-"`
 	DataChan    chan Packet  `json:"-"`

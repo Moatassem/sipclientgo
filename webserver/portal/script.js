@@ -1,6 +1,7 @@
 const recordForm = document.getElementById('recordForm');
 const dataTable = document.getElementById('dataTable').getElementsByTagName('tbody')[0];
 const callsTable = document.getElementById('callsTable').getElementsByTagName('tbody')[0];
+const updatebtn = document.getElementById('updatebtn');
 const deleteSelected = document.getElementById('deleteSelected');
 const refresh = document.getElementById('refresh');
 const submitButton = recordForm.querySelector('button[type="submit"]');
@@ -17,6 +18,14 @@ const btnClearCalls = document.getElementById('btnClearCalls');
 const animationProperty1 = 'flashButton 1s infinite'
 const animationProperty = 'flash 0.5s infinite alternate'
 
+
+function toPascalCase(str) {
+    return str
+        .replace(/[^a-zA-Z0-9]+/g, ' ')         // Replace non-alphanumeric characters with space
+        .split(' ')                             // Split into words
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()) // Capitalize each word
+        .join('');                              // Join without spaces
+}
 
 document.addEventListener('DOMContentLoaded', function () {
     loadData()
@@ -194,10 +203,27 @@ function populateTable(data) {
     });
 }
 
+updatebtn.addEventListener('click', event => {
+    event.preventDefault();
+
+    const checkboxes = dataTable.querySelectorAll('input[type="checkbox"]:checked');
+    if (checkboxes.length !== 1) return;
+
+    const cells = checkboxes[0].closest('tr').cells;
+
+
+    cells[1].textContent = toPascalCase(document.getElementById('enabled').value);
+    cells[2].textContent = document.getElementById('imsi').value;
+    cells[3].textContent = document.getElementById('ki').value;
+    cells[4].textContent = document.getElementById('opc').value;
+    cells[7].textContent = document.getElementById('expires').value;
+    cells[8].textContent = document.getElementById('udpPort').value;
+})
+
 deleteSelected.addEventListener('click', event => {
     event.preventDefault();
-    const checkboxes = dataTable.querySelectorAll('input[type="checkbox"]:checked');
 
+    const checkboxes = dataTable.querySelectorAll('input[type="checkbox"]:checked');
     if (checkboxes.length === 0) return;
 
     if (!confirm('Are you sure you want to remove all selected records?')) return;
