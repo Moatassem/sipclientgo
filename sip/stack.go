@@ -599,7 +599,6 @@ func sipStack(sipmsg *SipMessage, ss *SipSession, newSesType NewSessionType) {
 					ss.DropMe()
 				}
 			}
-
 		}
 	}
 }
