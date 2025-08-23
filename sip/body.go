@@ -29,11 +29,7 @@ func NewMessageBody(init bool) *MessageBody {
 }
 
 func NewMessageSDPBody(sdpSes *sdp.Session) MessageBody {
-	sdpbytes := sdpSes.Bytes()
-	// mb := MessageBody{PartsContents: make(map[BodyType]ContentPart)}
-	// mb.PartsContents[SDP] = ContentPart{Bytes: sdpbytes}
-	// return mb
-	return MessageBody{PartsContents: map[global.BodyType]ContentPart{global.SDP: {Bytes: []byte(sdpbytes)}}}
+	return MessageBody{PartsContents: map[global.BodyType]ContentPart{global.SDP: {Bytes: sdpSes.Bytes()}}}
 }
 
 func NewContentPart(bt global.BodyType, bytes []byte) ContentPart {

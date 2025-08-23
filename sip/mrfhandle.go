@@ -63,7 +63,7 @@ func (ss *SipSession) buildSDPOffer(callhold bool) bool {
 		ss.MediaListener = MediaPorts.ReserveSocket()
 	}
 
-	mySDP := sdp.NewSessionSDP(ss.SDPSessionID, ss.SDPSessionVersion, ClientIPv4.String(), B2BUAName, system.Uint32ToStr(ss.rtpSSRC), medDir, system.GetUDPortFromConn(ss.MediaListener), []uint8{sdp.G722, sdp.PCMA, sdp.PCMU, sdp.Telephone_Event})
+	mySDP, _ := sdp.NewSessionSDP(ss.SDPSessionID, ss.SDPSessionVersion, ClientIPv4.String(), B2BUAName, system.Uint32ToStr(ss.rtpSSRC), medDir, system.GetUDPortFromConn(ss.MediaListener), []uint8{sdp.G722, sdp.PCMA, sdp.PCMU, sdp.RFC4733PT})
 
 	if ss.LocalSDP != nil && !mySDP.Equals(ss.LocalSDP) {
 		ss.SDPSessionVersion += 1
@@ -100,22 +100,21 @@ func (ss *SipSession) buildSDPAnswer(sipmsg *SipMessage) (sipcode, q850code int,
 			conn = connection
 			break
 		}
-		for k := range media.Format {
-			frmt := media.Format[k]
-			if frmt.Channels != 1 || frmt.ClockRate != 8000 || !slices.Contains(sdp.SupportedCodecs, frmt.Payload) {
+		for k := range media.Formats {
+			frmt := media.Formats[k]
+			if frmt.Channels != 1 || frmt.ClockRate != 8000 || !slices.Contains(SupportedCodecs, frmt.Payload) {
 				continue
 			}
 			audioFormat = frmt
 			break
 		}
-		for k := range media.Format {
-			frmt := media.Format[k]
-			if frmt.Name == sdp.TelephoneEvents {
+		for k := range media.Formats {
+			frmt := media.Formats[k]
+			if frmt.Name == sdp.RFC4733 {
 				dtmfFormat = frmt
 				break
 			}
 		}
-		media.Chosen = true
 		break
 	}
 
@@ -214,20 +213,18 @@ func (ss *SipSession) buildSDPAnswer(sipmsg *SipMessage) (sipcode, q850code int,
 
 	ss.LocalMedDir = sdp.NegotiateAnswerMode(ss.LocalMedDir, ss.RemoteMedDir)
 
-	for i := range sdpses.Media {
-		media := sdpses.Media[i]
+	for _, media := range sdpses.Media {
 		var newmedia *sdp.Media
-		if media.Chosen {
+		if media.Type == sdp.Audio {
 			newmedia = &sdp.Media{
-				Chosen:     true,
-				Type:       "audio",
+				Type:       sdp.Audio,
 				Port:       system.GetUDPortFromConn(ss.MediaListener),
 				Proto:      media.Proto,
-				Format:     []*sdp.Format{audioFormat},
+				Formats:    []*sdp.Format{audioFormat},
 				Attributes: []*sdp.Attr{{Name: "ptime", Value: "20"}},
 				Mode:       ss.LocalMedDir}
 			if dtmfFormat != nil {
-				newmedia.Format = append(newmedia.Format, dtmfFormat)
+				newmedia.Formats = append(newmedia.Formats, dtmfFormat)
 			}
 		} else {
 			newmedia = &sdp.Media{Type: media.Type, Port: 0, Proto: media.Proto}
@@ -337,7 +334,7 @@ func (ss *SipSession) mediaReceiver() {
 						signal := dtmf.DetectDTMF(pcm)
 						if signal != "" {
 							dtmf := DicDTMFEvent[DicDTMFSignal[signal]]
-							frmt := ss.LocalSDP.GetChosenMedia().FormatByPayload(ss.rtpPayloadType)
+							frmt := ss.LocalSDP.GetAudioMediaFlow().FormatByPayload(ss.rtpPayloadType)
 							ss.processDTMF(dtmf, fmt.Sprintf("Inband - RTP Audio Tone (%s) - Received: ", frmt.Name))
 						}
 					} else {

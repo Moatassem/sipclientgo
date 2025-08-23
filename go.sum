@@ -1,5 +1,5 @@
-github.com/Moatassem/sdp v0.2.0 h1:HYDKt+7FtONi6q8YyTir7gIc1fsL0wqpkPzKji36m/s=
-github.com/Moatassem/sdp v0.2.0/go.mod h1:+2XMgkMWp8/xgReSPRB8IdG33GF0lnRoyfxfhUxUu50=
+github.com/Moatassem/sdp v0.2.89 h1:C958/v64oWmrpNLOtrUjPAhuxQkuIjadeFAqoBM7V1Q=
+github.com/Moatassem/sdp v0.2.89/go.mod h1:+2XMgkMWp8/xgReSPRB8IdG33GF0lnRoyfxfhUxUu50=
 github.com/gorilla/websocket v1.5.3 h1:saDtZ6Pbx/0u+bgYQ3q96pZgCzfhKXGPqt7kZ72aNNg=
 github.com/gorilla/websocket v1.5.3/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
 github.com/gotranspile/g722 v0.0.0-20240123003956-384a1bb16a19 h1:vqA29ogkaaq2GxFQsMA8TTFUSGc1lGaZtnKbuiP840c=

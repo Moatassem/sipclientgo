@@ -3,10 +3,16 @@ package sip
 import (
 	"fmt"
 	"sipclientgo/global"
+
+	"github.com/Moatassem/sdp"
 )
 
 const (
 	SipPort int = 5060
+)
+
+var (
+	SupportedCodecs = []uint8{sdp.PCMA, sdp.PCMU, sdp.G722}
 )
 
 func StartServer() {
